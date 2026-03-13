@@ -1,0 +1,125 @@
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader } from '../../components/Card';
+import { Users, UserCheck, BookOpen, Clock } from 'lucide-react';
+import api from '../../services/api';
+import AnnouncementList from '../../components/AnnouncementList';
+import Modal from '../../components/Modal';
+
+const AdminOverview = () => {
+  const [stats, setStats] = useState({ teachers: 0, students: 0, classes: 0 });
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [annForm, setAnnForm] = useState({ title: '', message: '', target_audience: 'All' });
+
+  const fetchStats = async () => {
+    try {
+      const { data: users } = await api.get('/users');
+      const { data: classes } = await api.get('/classes');
+      setStats({
+        teachers: users.filter(u => u.role === 'Teacher').length,
+        students: users.filter(u => u.role === 'Student').length,
+        classes: classes.length
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const handleCreateAnnouncement = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post('/announcements', annForm);
+      setIsModalOpen(false);
+      setAnnForm({ title: '', message: '', target_audience: 'All' });
+      // The AnnouncementList handles its own fetch or we can force refresh
+      window.location.reload(); // Simple way to refresh lists for now
+    } catch (err) {
+      alert('Failed to create announcement');
+    }
+  };
+
+  const statCards = [
+    { title: 'Total Teachers', value: stats.teachers, icon: Users, color: 'text-blue-600', bg: 'bg-blue-100' },
+    { title: 'Total Students', value: stats.students, icon: UserCheck, color: 'text-green-600', bg: 'bg-green-100' },
+    { title: 'Active Classes', value: stats.classes, icon: BookOpen, color: 'text-purple-600', bg: 'bg-purple-100' },
+    { title: 'Substitutions', value: 'Check', icon: Clock, color: 'text-amber-600', bg: 'bg-amber-100' },
+  ];
+
+  return (
+    <div className="space-y-6 text-slate-900">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
+          <p className="text-gray-500 mt-1">Welcome to the Admin control panel.</p>
+        </div>
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="bg-indigo-600 text-white px-4 py-2 rounded-lg shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition font-medium"
+        >
+          Create Announcement
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {statCards.map((stat, i) => (
+          <Card key={i}>
+            <CardContent className="flex items-center gap-4 py-8">
+              <div className={`p-4 rounded-full ${stat.bg} ${stat.color}`}>
+                <stat.icon size={28} />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">{stat.title}</p>
+                <h4 className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</h4>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+         <div className="lg:col-span-2 space-y-4">
+           <h2 className="text-xl font-bold text-gray-800">Recent Announcements</h2>
+           <AnnouncementList isAdminView={true} />
+         </div>
+         
+         <div className="space-y-4">
+           <h2 className="text-xl font-bold text-gray-800">System Activity</h2>
+           <Card>
+             <CardContent className="p-4 space-y-4">
+               <div className="text-sm text-gray-500 italic">Recent logs will appear here.</div>
+             </CardContent>
+           </Card>
+         </div>
+      </div>
+
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="New Announcement">
+        <form onSubmit={handleCreateAnnouncement} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Title</label>
+            <input required className="w-full border rounded p-2 mt-1" value={annForm.title} onChange={e => setAnnForm({...annForm, title: e.target.value})} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Message</label>
+            <textarea required rows="4" className="w-full border rounded p-2 mt-1" value={annForm.message} onChange={e => setAnnForm({...annForm, message: e.target.value})} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Target Audience</label>
+            <select className="w-full border rounded p-2 mt-1" value={annForm.target_audience} onChange={e => setAnnForm({...annForm, target_audience: e.target.value})}>
+              <option value="All">All Users</option>
+              <option value="Teachers">Teachers Only</option>
+              <option value="Students">Students Only</option>
+            </select>
+          </div>
+          <button type="submit" className="w-full bg-indigo-600 text-white p-3 rounded-lg mt-4 font-bold hover:bg-indigo-700 transition">
+            Publish Now
+          </button>
+        </form>
+      </Modal>
+    </div>
+  );
+};
+
+export default AdminOverview;
