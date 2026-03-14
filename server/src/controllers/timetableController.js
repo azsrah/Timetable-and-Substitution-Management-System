@@ -10,11 +10,12 @@ exports.getAllPeriods = async (req, res) => {
   }
 };
 
-// Get weekly timetable for a class
+// Get weekly timetable for a class with substitutions overlay
 exports.getClassTimetable = async (req, res) => {
   const { classId } = req.params;
   try {
-    const [rows] = await pool.query(`
+    // 1. Get base timetable
+    const [baseRows] = await pool.query(`
       SELECT t.id, t.day_of_week, t.period_id, p.name as period_name, p.start_time, p.end_time, p.is_break,
              s.name as subject_name, u.name as teacher_name, r.name as resource_name, t.is_locked
       FROM timetables t
@@ -25,7 +26,52 @@ exports.getClassTimetable = async (req, res) => {
       WHERE t.class_id = ?
       ORDER BY FIELD(t.day_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'), p.start_time
     `, [classId]);
-    res.json(rows);
+
+    // 2. Get substitutions for the CURRENT week (Monday to Sunday)
+    // We calculate the date range for the current week
+    const now = new Date();
+    const day = now.getDay(); 
+    const diffToMonday = now.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(now);
+    monday.setDate(diffToMonday);
+    monday.setHours(0,0,0,0);
+    
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23,59,59,999);
+
+    const [subRows] = await pool.query(`
+      SELECT s.timetable_id, s.date, u.name as substitute_teacher_name, s.status
+      FROM substitutions s
+      JOIN users u ON s.substitute_teacher_id = u.id
+      WHERE s.date BETWEEN ? AND ? AND s.status = 'Accepted'
+      AND s.timetable_id IN (SELECT id FROM timetables WHERE class_id = ?)
+    `, [monday, sunday, classId]);
+
+    // 3. Merge substitutions into base rows
+    // Since weekly timetable is grouped by Day/Period, but substitutions are by Date,
+    // we return the substitutions as a separate array or attached to the slots.
+    // Let's attach them to the slots for easier frontend handling.
+    const merged = baseRows.map(row => {
+      // Find substitutions for this specific day_of_week in the current week
+      const daySubs = subRows.filter(s => {
+        const subDate = new Date(s.date);
+        const subDayName = subDate.toLocaleDateString('en-US', { weekday: 'long' });
+        return subDayName.toLowerCase() === row.day_of_week.toLowerCase() && s.timetable_id === row.id;
+      });
+
+      if (daySubs.length > 0) {
+        // We take the first accepted sub for that date (usually only one)
+        return { 
+          ...row, 
+          substitute_teacher: daySubs[0].substitute_teacher_name,
+          substitution_date: daySubs[0].date
+        };
+      }
+      return row;
+    });
+
+    res.json(merged);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }

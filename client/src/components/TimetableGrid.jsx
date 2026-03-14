@@ -67,9 +67,16 @@ const TimetableGrid = ({
                       onClick={() => onSlotClick && isEditMode ? onSlotClick(day, period, slot) : null}
                     >
                       {slot ? (
-                        <div className={`h-full w-full rounded-md p-2 flex flex-col justify-between ${slot.is_locked ? 'bg-gray-100 border-l-4 border-gray-400' : 'bg-indigo-50 border-l-4 border-indigo-400'}`}>
-                          <div className="font-semibold text-indigo-900 line-clamp-1">{slot.subject_name}</div>
-                          <div className="text-xs text-gray-600 line-clamp-1">{slot.teacher_name}</div>
+                        <div className={`h-full w-full rounded-md p-2 flex flex-col justify-between relative ${slot.is_locked ? 'bg-gray-100 border-l-4 border-gray-400' : 'bg-indigo-50 border-l-4 border-indigo-400'}`}>
+                          <div>
+                            <div className="font-semibold text-indigo-900 line-clamp-1">{slot.subject_name}</div>
+                            <div className={`text-xs line-clamp-1 ${slot.substitute_teacher ? 'text-amber-700 font-bold' : 'text-gray-600'}`}>
+                              {slot.substitute_teacher || slot.teacher_name}
+                            </div>
+                            {slot.substitute_teacher && (
+                              <div className="text-[9px] text-amber-600 font-bold uppercase tracking-tighter mt-0.5">Substituted</div>
+                            )}
+                          </div>
                           {slot.resource_name && (
                             <div className="mt-1 text-[10px] font-medium bg-white px-1 py-0.5 rounded text-indigo-600 truncate border border-indigo-100">
                               {slot.resource_name}

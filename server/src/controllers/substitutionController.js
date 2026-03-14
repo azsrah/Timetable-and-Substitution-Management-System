@@ -105,14 +105,20 @@ exports.acceptSubstitution = async (req, res) => {
     if (details.length === 0) return res.status(404).json({ message: 'Substitution not found' });
     
     const info = details[0];
+    const formattedDate = new Date(info.date).toLocaleDateString('en-US', { 
+      day: 'numeric', 
+      month: 'short', 
+      year: 'numeric' 
+    });
+
     await pool.query('UPDATE substitutions SET status = "Accepted" WHERE id = ?', [id]);
 
     req.io.emit('substitution_accepted', { 
-      message: `Teacher ${info.teacher_name} accepted the substitution for ${info.period_name} on ${new Date(info.date).toLocaleDateString()}.` 
+      message: `Teacher ${info.teacher_name} accepted the substitution for ${info.period_name} on ${formattedDate}.` 
     });
 
     req.io.emit(`notification_class_${info.class_id}`, {
-      message: `Your ${info.subject_name} class for ${info.period_name} today will be taken by ${info.teacher_name}.`
+      message: `Class Update: Your ${info.subject_name} class for ${info.period_name} on ${formattedDate} will be taken by ${info.teacher_name}.`
     });
 
     try {
