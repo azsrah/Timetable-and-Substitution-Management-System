@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { NotificationProvider, useNotifications } from './contexts/NotificationContext';
 import React, { useState } from 'react';
@@ -46,9 +46,12 @@ const Login = () => {
             Login
           </button>
         </form>
-        <div className="mt-6 text-sm">
-          <span className="text-slate-500">New student? </span>
-          <a href="/register" className="text-indigo-600 font-bold hover:underline">Register Here</a>
+        <div className="mt-6 flex flex-col gap-2 text-sm">
+          <Link to="/forgot-password" title="Click here to reset your password"  className="text-indigo-600 font-bold hover:underline">Forgot Password?</Link>
+          <div className="text-slate-500">
+            <span>New student? </span>
+            <Link to="/register" className="text-indigo-600 font-bold hover:underline">Register Here</Link>
+          </div>
         </div>
       </div>
     </div>
@@ -66,10 +69,13 @@ import TeacherOverview from './pages/teacher/TeacherOverview';
 import TeacherTimetable from './pages/teacher/TeacherTimetable';
 import ResourceRequests from './pages/teacher/ResourceRequests';
 import TeacherSubstitutions from './pages/teacher/TeacherSubstitutions';
+import TeacherSettings from './pages/teacher/TeacherSettings';
 
 import StudentOverview from './pages/student/StudentOverview';
 import StudentTimetable from './pages/student/StudentTimetable';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import Announcements from './pages/shared/Announcements';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -86,6 +92,8 @@ const AppRoutes = () => {
     return (
       <Routes>
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="*" element={<Login />} />
       </Routes>
     )
@@ -106,6 +114,7 @@ const AppRoutes = () => {
         <Route path="/teacher/requests" element={<ProtectedRoute allowedRoles={['Teacher', 'Admin']}><ResourceRequests /></ProtectedRoute>} />
         <Route path="/teacher/substitutions" element={<ProtectedRoute allowedRoles={['Teacher', 'Admin']}><TeacherSubstitutions /></ProtectedRoute>} />
         <Route path="/teacher/announcements" element={<ProtectedRoute allowedRoles={['Teacher', 'Admin']}><Announcements /></ProtectedRoute>} />
+        <Route path="/teacher/settings" element={<ProtectedRoute allowedRoles={['Teacher', 'Admin']}><TeacherSettings /></ProtectedRoute>} />
         <Route path="/student" element={<ProtectedRoute allowedRoles={['Student']}><StudentOverview /></ProtectedRoute>} />
         <Route path="/student/timetable" element={<ProtectedRoute allowedRoles={['Student']}><StudentTimetable /></ProtectedRoute>} />
         <Route path="/student/announcements" element={<ProtectedRoute allowedRoles={['Student']}><Announcements /></ProtectedRoute>} />

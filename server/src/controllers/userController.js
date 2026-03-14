@@ -3,23 +3,43 @@ const bcrypt = require('bcryptjs');
 
 exports.getAllUsers = async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT id, name, email, role, status, is_temporary_teacher FROM users WHERE role != "Admin" ORDER BY role, name');
+    const [rows] = await pool.query(`
+      SELECT u.id, u.name, u.email, u.role, u.status, u.is_temporary_teacher,
+             GROUP_CONCAT(s.name SEPARATOR ', ') as subjects,
+             GROUP_CONCAT(s.id) as subject_ids
+      FROM users u
+      LEFT JOIN teacher_subjects ts ON u.id = ts.teacher_id
+      LEFT JOIN subjects s ON ts.subject_id = s.id
+      WHERE u.role != "Admin"
+      GROUP BY u.id
+      ORDER BY u.role, u.name
+    `);
     res.json(rows);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
 exports.createTeacher = async (req, res) => {
-  const { name, email, password, is_temporary_teacher } = req.body;
+  const { name, email, password, is_temporary_teacher, subject_ids } = req.body;
   try {
     const passwordHash = await bcrypt.hash(password, 10);
-    await pool.query(
+    const [result] = await pool.query(
       'INSERT INTO users (name, email, password_hash, role, status, is_temporary_teacher) VALUES (?, ?, ?, "Teacher", "Active", ?)',
       [name, email, passwordHash, is_temporary_teacher || false]
     );
-    res.status(201).json({ message: 'Teacher created successfully' });
+
+    const teacherId = result.insertId;
+
+    if (subject_ids && Array.isArray(subject_ids) && subject_ids.length > 0) {
+      const tsValues = subject_ids.map(sid => [teacherId, parseInt(sid)]);
+      await pool.query('INSERT INTO teacher_subjects (teacher_id, subject_id) VALUES ?', [tsValues]);
+    }
+
+    res.status(201).json({ message: 'Teacher created successfully', id: teacherId });
   } catch (err) {
+    console.error('Error in createTeacher:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -39,6 +59,33 @@ exports.deleteUser = async (req, res) => {
     await pool.query('DELETE FROM users WHERE id = ?', [req.params.id]);
     res.json({ message: 'User deleted' });
   } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.changePassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const userId = req.user.id;
+
+  try {
+    const [rows] = await pool.query('SELECT password_hash FROM users WHERE id = ?', [userId]);
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const user = rows[0];
+    const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Incorrect current password' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const newPasswordHash = await bcrypt.hash(newPassword, salt);
+
+    await pool.query('UPDATE users SET password_hash = ? WHERE id = ?', [newPasswordHash, userId]);
+    res.json({ message: 'Password updated successfully' });
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };

@@ -21,7 +21,7 @@ const TeacherOverview = () => {
           api.get(`/timetable/teacher/${user.id}`),
           api.get('/classes')
         ]);
-        const day = new Date().toLocaleDateString('en-US', { weekday: 'Long' });
+        const day = new Date().toLocaleDateString('en-US', { weekday: 'long' });
         setTodaySchedule(schedRes.data.filter(s => s.day_of_week === day));
         setClasses(clsRes.data);
       } catch (err) {

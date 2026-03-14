@@ -7,7 +7,8 @@ const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [activeTab, setActiveTab] = useState('Teachers'); // 'Teachers' or 'Students'
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState({ name: '', email: '', password: '', is_temporary_teacher: false });
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', is_temporary_teacher: false, subject_ids: [] });
+  const [subjects, setSubjects] = useState([]);
 
   const fetchUsers = async () => {
     try {
@@ -18,8 +19,18 @@ const UserManagement = () => {
     }
   };
 
+  const fetchSubjects = async () => {
+    try {
+      const { data } = await api.get('/subjects');
+      setSubjects(data);
+    } catch (err) {
+      console.error('Error fetching subjects');
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
+    fetchSubjects();
   }, []);
 
   const handleAddTeacher = async (e) => {
@@ -27,7 +38,7 @@ const UserManagement = () => {
     try {
       await api.post('/users/teacher', formData);
       setIsModalOpen(false);
-      setFormData({ name: '', email: '', password: '', is_temporary_teacher: false });
+      setFormData({ name: '', email: '', password: '', is_temporary_teacher: false, subject_ids: [] });
       fetchUsers();
     } catch (err) {
       alert('Failed to add teacher');
@@ -95,6 +106,7 @@ const UserManagement = () => {
                 <th className="p-4">Name</th>
                 <th className="p-4">Email</th>
                 <th className="p-4">Role</th>
+                <th className="p-4">Subjects</th>
                 <th className="p-4">Status</th>
                 <th className="p-4 text-right">Actions</th>
               </tr>
@@ -107,6 +119,17 @@ const UserManagement = () => {
                   </td>
                   <td className="p-4">{u.email}</td>
                   <td className="p-4">{u.role}</td>
+                  <td className="p-4">
+                    {u.role === 'Teacher' ? (
+                      <div className="flex flex-wrap gap-1">
+                        {u.subjects ? u.subjects.split(', ').map((s, i) => (
+                          <span key={i} className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-slate-200">
+                            {s}
+                          </span>
+                        )) : <span className="text-gray-400 italic">None</span>}
+                      </div>
+                    ) : '-'}
+                  </td>
                   <td className="p-4">
                     <span className={`px-2 py-1 rounded text-xs font-medium ${u.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                       {u.status}
@@ -145,6 +168,28 @@ const UserManagement = () => {
           <div className="flex items-center gap-2 mt-4">
             <input type="checkbox" id="temp" checked={formData.is_temporary_teacher} onChange={e => setFormData({...formData, is_temporary_teacher: e.target.checked})} />
             <label htmlFor="temp" className="text-sm text-gray-700">Is Temporary/Visiting Teacher?</label>
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">Assigned Subjects</label>
+            <div className="grid grid-cols-2 gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200 max-h-40 overflow-y-auto">
+              {subjects.map(s => (
+                <label key={s.id} className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer hover:bg-slate-100 p-1 rounded transition">
+                  <input 
+                    type="checkbox" 
+                    checked={formData.subject_ids.includes(s.id)}
+                    onChange={(e) => {
+                      const newIds = e.target.checked 
+                        ? [...formData.subject_ids, s.id]
+                        : formData.subject_ids.filter(id => id !== s.id);
+                      setFormData({ ...formData, subject_ids: newIds });
+                    }}
+                    className="rounded text-indigo-600 focus:ring-indigo-500"
+                  />
+                  {s.name}
+                </label>
+              ))}
+            </div>
           </div>
           <button type="submit" className="w-full bg-indigo-600 text-white p-2 rounded mt-6 hover:bg-indigo-700">Save Teacher</button>
         </form>

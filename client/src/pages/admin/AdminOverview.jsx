@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '../../components/Card';
-import { Users, UserCheck, BookOpen, Clock } from 'lucide-react';
+import { Users, UserCheck, BookOpen, Clock, UserMinus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import AnnouncementList from '../../components/AnnouncementList';
 import Modal from '../../components/Modal';
 
 const AdminOverview = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState({ teachers: 0, students: 0, classes: 0 });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [annForm, setAnnForm] = useState({ title: '', message: '', target_audience: 'All' });
@@ -50,17 +52,26 @@ const AdminOverview = () => {
 
   return (
     <div className="space-y-6 text-slate-900">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
-          <p className="text-gray-500 mt-1">Welcome to the Admin control panel.</p>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Dashboard Overview</h1>
+          <p className="text-slate-500 mt-1 font-medium italic">Welcome back, Super Admin</p>
         </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition font-medium"
-        >
-          Create Announcement
-        </button>
+        <div className="flex gap-3">
+          <button 
+            onClick={() => navigate('/admin/substitutions?action=mark-absence')}
+            className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all transform hover:-translate-y-0.5 flex items-center gap-2 font-bold"
+          >
+            <UserMinus size={18} />
+            Mark Attendance
+          </button>
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="bg-slate-800 text-white px-5 py-2.5 rounded-xl shadow-lg shadow-slate-100 hover:bg-slate-900 transition-all transform hover:-translate-y-0.5 font-bold"
+          >
+            Create Announcement
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

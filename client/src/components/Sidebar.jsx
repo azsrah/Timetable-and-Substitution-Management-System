@@ -32,6 +32,7 @@ const Sidebar = () => {
     { to: '/teacher/requests', icon: FileText, label: 'Resource Requests' },
     { to: '/teacher/substitutions', icon: Clock, label: 'Substitutions' },
     { to: '/teacher/announcements', icon: Megaphone, label: 'Announcements' },
+    { to: '/teacher/settings', icon: Settings, label: 'Settings' },
   ];
 
   const studentLinks = [

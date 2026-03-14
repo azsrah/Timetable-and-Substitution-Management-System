@@ -59,7 +59,7 @@ async function initDB() {
       `CREATE TABLE IF NOT EXISTS resources (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
-        type ENUM('Lab', 'Ground', 'Auditorium') NOT NULL,
+        type ENUM('Lab', 'Ground', 'Auditorium', 'Library') NOT NULL,
         capacity INT DEFAULT 0
       )`,
       `CREATE TABLE IF NOT EXISTS timetables (
@@ -126,6 +126,13 @@ async function initDB() {
         is_read BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )`,
+      `CREATE TABLE IF NOT EXISTS teacher_subjects (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        teacher_id INT NOT NULL,
+        subject_id INT NOT NULL,
+        FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE
       )`
     ];
 

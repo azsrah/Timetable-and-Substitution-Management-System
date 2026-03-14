@@ -18,6 +18,25 @@ exports.getAllRequests = async (req, res) => {
   }
 };
 
+// List resource requests for the logged-in teacher
+exports.getMyRequests = async (req, res) => {
+  const teacher_id = req.user.id;
+  try {
+    const [rows] = await pool.query(`
+      SELECT rr.id, rr.date, p.name as period_name, p.start_time, r.name as resource_name, r.type as resource_type, rr.status
+      FROM resource_requests rr
+      JOIN periods p ON rr.period_id = p.id
+      JOIN resources r ON rr.resource_id = r.id
+      WHERE rr.teacher_id = ?
+      ORDER BY rr.created_at DESC
+    `, [teacher_id]);
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // List all resources
 exports.getAllResources = async (req, res) => {
   try {
