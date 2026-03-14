@@ -64,6 +64,7 @@ import ClassSubjectManagement from './pages/admin/ClassSubjectManagement';
 import TimetableEditor from './pages/admin/TimetableEditor';
 import ResourceApprovals from './pages/admin/ResourceApprovals';
 import AdminSubstitutions from './pages/admin/AdminSubstitutions';
+import AdminReports from './pages/admin/AdminReports';
 
 import TeacherOverview from './pages/teacher/TeacherOverview';
 import TeacherTimetable from './pages/teacher/TeacherTimetable';
@@ -109,6 +110,7 @@ const AppRoutes = () => {
         <Route path="/admin/resources" element={<ProtectedRoute allowedRoles={['Admin']}><ResourceApprovals /></ProtectedRoute>} />
         <Route path="/admin/substitutions" element={<ProtectedRoute allowedRoles={['Admin']}><AdminSubstitutions /></ProtectedRoute>} />
         <Route path="/admin/announcements" element={<ProtectedRoute allowedRoles={['Admin']}><Announcements /></ProtectedRoute>} />
+        <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={['Admin']}><AdminReports /></ProtectedRoute>} />
         <Route path="/teacher" element={<ProtectedRoute allowedRoles={['Teacher', 'Admin']}><TeacherOverview /></ProtectedRoute>} />
         <Route path="/teacher/timetable" element={<ProtectedRoute allowedRoles={['Teacher', 'Admin']}><TeacherTimetable /></ProtectedRoute>} />
         <Route path="/teacher/requests" element={<ProtectedRoute allowedRoles={['Teacher', 'Admin']}><ResourceRequests /></ProtectedRoute>} />

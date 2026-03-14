@@ -10,13 +10,27 @@ exports.getAllSubjects = async (req, res) => {
 };
 
 exports.createSubject = async (req, res) => {
-  const { name, code } = req.body;
+  const { name, code, required_resource_type } = req.body;
   try {
     const [result] = await pool.query(
-      'INSERT INTO subjects (name, code) VALUES (?, ?)',
-      [name, code]
+      'INSERT INTO subjects (name, code, required_resource_type) VALUES (?, ?, ?)',
+      [name, code, required_resource_type || 'None']
     );
-    res.status(201).json({ id: result.insertId, name, code });
+    res.status(201).json({ id: result.insertId, name, code, required_resource_type });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.updateSubject = async (req, res) => {
+  const { id } = req.params;
+  const { name, code, required_resource_type } = req.body;
+  try {
+    await pool.query(
+      'UPDATE subjects SET name = ?, code = ?, required_resource_type = ? WHERE id = ?',
+      [name, code, required_resource_type || 'None', id]
+    );
+    res.json({ message: 'Subject updated successfully' });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }

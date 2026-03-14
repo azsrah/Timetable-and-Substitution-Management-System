@@ -38,7 +38,8 @@ async function initDB() {
       `CREATE TABLE IF NOT EXISTS subjects (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
-        code VARCHAR(50) UNIQUE NOT NULL
+        code VARCHAR(50) UNIQUE NOT NULL,
+        required_resource_type ENUM('Lab', 'Ground', 'Auditorium', 'Library', 'None') DEFAULT 'None'
       )`,
       `CREATE TABLE IF NOT EXISTS class_subjects (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -71,6 +72,7 @@ async function initDB() {
         teacher_id INT NOT NULL,
         resource_id INT NULL,
         is_locked BOOLEAN DEFAULT FALSE,
+        is_double_period BOOLEAN DEFAULT FALSE,
         FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
         FOREIGN KEY (period_id) REFERENCES periods(id) ON DELETE CASCADE,
         FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
@@ -133,11 +135,23 @@ async function initDB() {
         subject_id INT NOT NULL,
         FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE
-      )`
+      )`,
+      // Alter tables if they already exist to add new columns
+      `ALTER TABLE subjects ADD COLUMN required_resource_type ENUM('Lab', 'Ground', 'Auditorium', 'Library', 'None') DEFAULT 'None'`,
+      `ALTER TABLE timetables ADD COLUMN is_double_period BOOLEAN DEFAULT FALSE`
     ];
 
     for (let query of queries) {
-      await connection.query(query);
+      try {
+        await connection.query(query);
+      } catch (tableErr) {
+        if (tableErr.code === 'ER_DUP_FIELDNAME') {
+          console.log(`Column already exists, skipping.`);
+        } else {
+          console.error(`Error executing query: ${query}`, tableErr);
+          throw tableErr;
+        }
+      }
     }
     console.log("All tables created successfully.");
     

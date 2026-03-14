@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { 
   Users, BookOpen, Calendar, 
   Settings, LogOut, Clock, 
-  Bell, FileText, Activity, Megaphone 
+  Bell, FileText, Activity, Megaphone, BarChart2
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -24,6 +24,7 @@ const Sidebar = () => {
     { to: '/admin/substitutions', icon: Clock, label: 'Substitutions' },
     { to: '/admin/resources', icon: FileText, label: 'Resource Approvals' },
     { to: '/admin/announcements', icon: Megaphone, label: 'Announcements' },
+    { to: '/admin/reports', icon: BarChart2, label: 'Reports' },
   ];
 
   const teacherLinks = [

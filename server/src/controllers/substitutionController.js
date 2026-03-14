@@ -3,7 +3,7 @@ const emailService = require('../utils/emailService');
 
 // Suggest a substitute for a teacher for a given period
 exports.suggestSubstitute = async (req, res) => {
-  const { day_of_week, period_id } = req.query;
+  const { day_of_week, period_id, date } = req.query;
   
   try {
     const [freeTeachers] = await pool.query(`
@@ -11,10 +11,18 @@ exports.suggestSubstitute = async (req, res) => {
       FROM users u
       WHERE u.role = 'Teacher' AND u.status = 'Active'
       AND u.id NOT IN (
+        -- Not in regular timetable for this period
         SELECT teacher_id FROM timetables 
         WHERE day_of_week = ? AND period_id = ?
       )
-    `, [day_of_week, period_id]);
+      AND u.id NOT IN (
+        -- Not already doing a substitution for this date and period
+        SELECT s.substitute_teacher_id 
+        FROM substitutions s
+        JOIN timetables t ON s.timetable_id = t.id
+        WHERE s.date = ? AND t.period_id = ? AND s.status = 'Accepted'
+      )
+    `, [day_of_week, period_id, date, period_id]);
 
     res.json(freeTeachers);
   } catch (err) {

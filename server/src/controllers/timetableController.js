@@ -28,7 +28,6 @@ exports.getClassTimetable = async (req, res) => {
     `, [classId]);
 
     // 2. Get substitutions for the CURRENT week (Monday to Sunday)
-    // We calculate the date range for the current week
     const now = new Date();
     const day = now.getDay(); 
     const diffToMonday = now.getDate() - day + (day === 0 ? -6 : 1);
@@ -48,12 +47,7 @@ exports.getClassTimetable = async (req, res) => {
       AND s.timetable_id IN (SELECT id FROM timetables WHERE class_id = ?)
     `, [monday, sunday, classId]);
 
-    // 3. Merge substitutions into base rows
-    // Since weekly timetable is grouped by Day/Period, but substitutions are by Date,
-    // we return the substitutions as a separate array or attached to the slots.
-    // Let's attach them to the slots for easier frontend handling.
     const merged = baseRows.map(row => {
-      // Find substitutions for this specific day_of_week in the current week
       const daySubs = subRows.filter(s => {
         const subDate = new Date(s.date);
         const subDayName = subDate.toLocaleDateString('en-US', { weekday: 'long' });
@@ -61,7 +55,6 @@ exports.getClassTimetable = async (req, res) => {
       });
 
       if (daySubs.length > 0) {
-        // We take the first accepted sub for that date (usually only one)
         return { 
           ...row, 
           substitute_teacher: daySubs[0].substitute_teacher_name,
@@ -98,65 +91,87 @@ exports.getTeacherTimetable = async (req, res) => {
   }
 };
 
-// Add or Update a Timetable Slot WITH Conflict Detection
+// Add or Update a Timetable Slot WITH Conflict Detection & SL Constraints
 exports.saveTimetableSlot = async (req, res) => {
-  const { class_id, day_of_week, period_id, subject_id, teacher_id, resource_id } = req.body;
+  const { class_id, day_of_week, period_id, subject_id, teacher_id, resource_id, is_double_period } = req.body;
   
   try {
-    // 1. Conflict Check: Is Teacher already booked for this period on this day?
+    // 1. Specialist Room Constraint Check
+    const [subject] = await pool.query('SELECT required_resource_type FROM subjects WHERE id = ?', [subject_id]);
+    const reqType = subject[0]?.required_resource_type || 'None';
+
+    if (reqType !== 'None' && resource_id) {
+      const [resource] = await pool.query('SELECT type FROM resources WHERE id = ?', [resource_id]);
+      if (resource[0]?.type !== reqType) {
+        return res.status(400).json({ message: `This subject requires a ${reqType} room.` });
+      }
+    } else if (reqType !== 'None' && !resource_id) {
+      return res.status(400).json({ message: `This subject MUST be scheduled in a ${reqType} room.` });
+    }
+
+    // 2. Conflict Check
     const [teacherConflict] = await pool.query(
       'SELECT id, class_id FROM timetables WHERE teacher_id = ? AND day_of_week = ? AND period_id = ?',
       [teacher_id, day_of_week, period_id]
     );
     
-    // Allow updating the same slot but block if it's a different class
     if (teacherConflict.length > 0 && teacherConflict[0].class_id !== class_id) {
       return res.status(409).json({ message: 'Teacher is already booked for this period.' });
     }
 
-    // 2. Conflict Check: Is Resource already booked?
     if (resource_id) {
       const [resourceConflict] = await pool.query(
         'SELECT id, class_id FROM timetables WHERE resource_id = ? AND day_of_week = ? AND period_id = ?',
         [resource_id, day_of_week, period_id]
       );
       if (resourceConflict.length > 0 && resourceConflict[0].class_id !== class_id) {
-        return res.status(409).json({ message: 'Resource (Lab/Ground) is already booked for this period.' });
+        return res.status(409).json({ message: 'Resource is already booked for this period.' });
       }
     }
 
-    // 3. Upsert slot for the class
+    // 3. Double Period logic
+    if (is_double_period) {
+        const [periods] = await pool.query('SELECT id FROM periods ORDER BY start_time');
+        const currentIndex = periods.findIndex(p => p.id == period_id);
+        if (currentIndex !== -1 && currentIndex < periods.length - 1) {
+            const nextPeriodId = periods[currentIndex + 1].id;
+            const [nextTeacherConflict] = await pool.query(
+                'SELECT id FROM timetables WHERE teacher_id = ? AND day_of_week = ? AND period_id = ?',
+                [teacher_id, day_of_week, nextPeriodId]
+            );
+            if (nextTeacherConflict.length > 0 && nextTeacherConflict[0].class_id !== class_id) {
+                return res.status(409).json({ message: 'Teacher is booked in the subsequent period needed for the double period.' });
+            }
+        }
+    }
+
+    // 4. Upsert slot
     const [existingSlot] = await pool.query(
       'SELECT id, is_locked FROM timetables WHERE class_id = ? AND day_of_week = ? AND period_id = ?',
       [class_id, day_of_week, period_id]
     );
 
     if (existingSlot.length > 0) {
-      if (existingSlot[0].is_locked) {
-        return res.status(403).json({ message: 'This timetable slot is locked.' });
-      }
-      // Update
+      if (existingSlot[0].is_locked) return res.status(403).json({ message: 'This timetable slot is locked.' });
       await pool.query(
-        'UPDATE timetables SET subject_id = ?, teacher_id = ?, resource_id = ? WHERE id = ?',
-        [subject_id, teacher_id, resource_id || null, existingSlot[0].id]
+        'UPDATE timetables SET subject_id = ?, teacher_id = ?, resource_id = ?, is_double_period = ? WHERE id = ?',
+        [subject_id, teacher_id, resource_id || null, is_double_period ? 1 : 0, existingSlot[0].id]
       );
     } else {
-      // Insert
       await pool.query(
-        'INSERT INTO timetables (class_id, day_of_week, period_id, subject_id, teacher_id, resource_id) VALUES (?, ?, ?, ?, ?, ?)',
-        [class_id, day_of_week, period_id, subject_id, teacher_id, resource_id || null]
+        'INSERT INTO timetables (class_id, day_of_week, period_id, subject_id, teacher_id, resource_id, is_double_period) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [class_id, day_of_week, period_id, subject_id, teacher_id, resource_id || null, is_double_period ? 1 : 0]
       );
     }
     
-    // Emit real-time change
     req.io.emit('timetable_updated', { class_id, day_of_week, period_id });
-
     res.json({ message: 'Timetable slot saved successfully' });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
-// Get today's schedule for a student or teacher (merges base timetable with substitutions)
+
+// Get today's schedule
 exports.getTodaySchedule = async (req, res) => {
   const { role, id } = req.params;
   const dayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
@@ -168,7 +183,6 @@ exports.getTodaySchedule = async (req, res) => {
     let params = [];
 
     if (role === 'Student') {
-      // For a student, we get the timetable of their class
       baseQuery = `
         SELECT t.id as timetable_id, t.day_of_week, p.name as period_name, p.start_time, p.end_time,
                s.name as subject_name, u.name as teacher_name, c.grade, c.section, t.period_id
@@ -189,8 +203,6 @@ exports.getTodaySchedule = async (req, res) => {
         WHERE s.date = ? AND s.status = 'Accepted'
       `;
     } else if (role === 'Teacher') {
-      // For a teacher, we get their assignments AND where they are substituting
-      // 1. Base schedule for today
       baseQuery = `
          SELECT t.id as timetable_id, t.day_of_week, p.name as period_name, p.start_time, p.end_time,
                 s.name as subject_name, c.grade, c.section, t.period_id, 'Regular' as type
@@ -203,7 +215,6 @@ exports.getTodaySchedule = async (req, res) => {
       `;
       params = [id, dayName];
 
-      // 2. Where this teacher is SUBSTITUTING today
       substitutesQuery = `
         SELECT s.timetable_id, t.day_of_week, p.name as period_name, p.start_time, p.end_time,
                sub.name as subject_name, c.grade, c.section, t.period_id, 'Substitution' as type
@@ -220,31 +231,35 @@ exports.getTodaySchedule = async (req, res) => {
     
     if (role === 'Student') {
        const [subRows] = await pool.query(substitutesQuery, [today]);
-       // Merge: if a timetable_id is in subRows, replace teacher_name
        const merged = baseRows.map(row => {
          const sub = subRows.find(s => s.timetable_id === row.timetable_id);
-         if (sub) {
-           return { ...row, teacher_name: sub.substitute_teacher_name, is_substituted: true };
-         }
+         if (sub) return { ...row, teacher_name: sub.substitute_teacher_name, is_substituted: true };
          return row;
        });
        return res.json(merged);
     } else {
-       // For teacher, merge base schedule (minus removals) with new assignments
-       // First, find if any of the teacher's base classes are being substituted BY OTHERS (meaning they are absent/off)
        const [removals] = await pool.query('SELECT timetable_id FROM substitutions WHERE absent_teacher_id = ? AND date = ? AND status = "Accepted"', [id, today]);
        const removalIds = removals.map(r => r.timetable_id);
-
        const [subAssignments] = await pool.query(substitutesQuery, [id, today]);
-
        const filteredBase = baseRows.filter(row => !removalIds.includes(row.timetable_id));
        const merged = [...filteredBase, ...subAssignments].sort((a, b) => a.start_time.localeCompare(b.start_time));
-       
        return res.json(merged);
     }
-
   } catch (err) {
     console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Get workload statistics
+exports.getTeacherWorkload = async (req, res) => {
+  const { teacherId } = req.params;
+  try {
+    const [rows] = await pool.query(`SELECT COUNT(*) as total_periods FROM timetables WHERE teacher_id = ?`, [teacherId]);
+    const [doublePeriods] = await pool.query(`SELECT COUNT(*) as double_count FROM timetables WHERE teacher_id = ? AND is_double_period = 1`, [teacherId]);
+    const total = rows[0].total_periods + (doublePeriods[0]?.double_count || 0);
+    res.json({ teacherId, total_periods: total, limit: 35, status: total > 35 ? 'Overloaded' : 'Normal' });
+  } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
 };
