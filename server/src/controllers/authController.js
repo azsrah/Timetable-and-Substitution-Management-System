@@ -19,7 +19,7 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    if (user.email_verified === 0) {
+    if (user.role === 'Student' && user.email_verified === 0) {
       return res.status(403).json({ message: 'Please verify your email before logging in' });
     }
 
@@ -48,7 +48,28 @@ exports.registerStudent = async (req, res) => {
     // Check if email exists
     const [existing] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
     if (existing.length > 0) {
-      return res.status(400).json({ message: 'Email already exists' });
+      if (existing[0].email_verified === 1) {
+        return res.status(400).json({ message: 'Email already exists' });
+      }
+      // If found but unverified, update info and send new OTP
+      const passwordHash = await bcrypt.hash(password, 10);
+      await pool.query(
+        `UPDATE users SET name = ?, password_hash = ?, contact_info = ?, class_id = ? WHERE email = ?`,
+        [name, passwordHash, contact_info, class_id, email]
+      );
+
+      const otp = generateOTP();
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+      await pool.query(
+        'INSERT INTO otps (email, otp, expires_at, type) VALUES (?, ?, ?, "registration")',
+        [email, otp, expiresAt]
+      );
+      await emailService.sendOTP(email, otp, 'registration');
+
+      return res.json({ 
+        message: 'Account exists but is not verified. A new OTP has been sent.',
+        email: email 
+      });
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
