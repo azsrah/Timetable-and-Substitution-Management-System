@@ -5,11 +5,12 @@ exports.getAllUsers = async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT u.id, u.name, u.email, u.role, u.status, u.is_temporary_teacher,
-             GROUP_CONCAT(s.name SEPARATOR ', ') as subjects,
-             GROUP_CONCAT(s.id) as subject_ids
+             c.grade, c.section,
+             GROUP_CONCAT(DISTINCT s.name SEPARATOR ', ') as subjects
       FROM users u
       LEFT JOIN teacher_subjects ts ON u.id = ts.teacher_id
       LEFT JOIN subjects s ON ts.subject_id = s.id
+      LEFT JOIN classes c ON u.class_id = c.id
       WHERE u.role != "Admin"
       GROUP BY u.id
       ORDER BY u.role, u.name

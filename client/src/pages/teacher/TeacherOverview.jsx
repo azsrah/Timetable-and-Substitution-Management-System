@@ -18,11 +18,10 @@ const TeacherOverview = () => {
     const fetchData = async () => {
       try {
         const [schedRes, clsRes] = await Promise.all([
-          api.get(`/timetable/teacher/${user.id}`),
+          api.get(`/timetable/today/Teacher/${user.id}`),
           api.get('/classes')
         ]);
-        const day = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-        setTodaySchedule(schedRes.data.filter(s => s.day_of_week === day));
+        setTodaySchedule(schedRes.data);
         setClasses(clsRes.data);
       } catch (err) {
         console.error(err);
@@ -79,8 +78,13 @@ const TeacherOverview = () => {
                 {todaySchedule.length > 0 ? todaySchedule.map((slot, i) => (
                   <div key={i} className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
                     <div className="font-bold text-indigo-600 w-24">{slot.start_time.substring(0,5)}</div>
-                    <div>
-                      <div className="font-semibold text-gray-900">{slot.subject_name}</div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <div className="font-semibold text-gray-900">{slot.subject_name}</div>
+                        {slot.type === 'Substitution' && (
+                          <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-bold uppercase tracking-wider">Substitution</span>
+                        )}
+                      </div>
                       <div className="text-sm text-gray-500">Class: {slot.grade}{slot.section}</div>
                     </div>
                   </div>

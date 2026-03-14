@@ -106,7 +106,7 @@ const UserManagement = () => {
                 <th className="p-4">Name</th>
                 <th className="p-4">Email</th>
                 <th className="p-4">Role</th>
-                <th className="p-4">Subjects</th>
+                <th className="p-4">{activeTab === 'Teachers' ? 'Subjects' : 'Grade'}</th>
                 <th className="p-4">Status</th>
                 <th className="p-4 text-right">Actions</th>
               </tr>
@@ -128,7 +128,11 @@ const UserManagement = () => {
                           </span>
                         )) : <span className="text-gray-400 italic">None</span>}
                       </div>
-                    ) : '-'}
+                    ) : (
+                      <span className="font-semibold text-indigo-600">
+                        {u.grade && u.section ? `${u.grade}${u.section}` : '-'}
+                      </span>
+                    )}
                   </td>
                   <td className="p-4">
                     <span className={`px-2 py-1 rounded text-xs font-medium ${u.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>

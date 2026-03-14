@@ -10,7 +10,7 @@ const TeacherSubstitutions = () => {
 
   const fetchSubstitutions = async () => {
     try {
-      const { data } = await api.get(`/attendance/teacher/${user.id}`);
+      const { data } = await api.get(`/substitutions/teacher/${user.id}`);
       setSubstitutions(data);
     } catch (err) {
       console.error(err);
@@ -23,7 +23,7 @@ const TeacherSubstitutions = () => {
 
   const handleAccept = async (id) => {
     try {
-      await api.put(`/attendance/substitute/${id}/accept`);
+      await api.put(`/substitutions/${id}/accept`);
       fetchSubstitutions();
     } catch (err) {
       alert('Failed to accept');

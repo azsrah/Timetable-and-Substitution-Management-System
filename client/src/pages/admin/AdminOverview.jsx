@@ -59,11 +59,11 @@ const AdminOverview = () => {
         </div>
         <div className="flex gap-3">
           <button 
-            onClick={() => navigate('/admin/substitutions?action=mark-absence')}
+            onClick={() => navigate('/admin/substitutions')}
             className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all transform hover:-translate-y-0.5 flex items-center gap-2 font-bold"
           >
-            <UserMinus size={18} />
-            Mark Attendance
+            <Clock size={18} />
+            Manage Substitutions
           </button>
           <button 
             onClick={() => setIsModalOpen(true)}

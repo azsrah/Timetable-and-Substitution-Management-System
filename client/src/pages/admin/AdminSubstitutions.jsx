@@ -19,7 +19,7 @@ const AdminSubstitutions = () => {
 
   const fetchSubstitutions = async () => {
     try {
-      const { data } = await api.get('/attendance/substitutions');
+      const { data } = await api.get('/substitutions/all');
       setSubstitutions(data);
     } catch (err) {
       console.error(err);
@@ -39,9 +39,8 @@ const AdminSubstitutions = () => {
     fetchSubstitutions();
     fetchTeachers();
     
-    // Auto-open modal if query param 'action=mark-absence' is present
     const params = new URLSearchParams(location.search);
-    if (params.get('action') === 'mark-absence') {
+    if (params.get('action') === 'add') {
       setIsModalOpen(true);
     }
   }, [location.search]);
@@ -49,17 +48,12 @@ const AdminSubstitutions = () => {
   const loadSchedule = async () => {
     if (!selectedTeacher || !selectedDate) return;
     try {
-      // Avoid timezone shifts by using the local constructor
       const [year, month, day] = selectedDate.split('-').map(Number);
       const dateObj = new Date(year, month - 1, day);
       const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
       
       const { data } = await api.get(`/timetable/teacher/${selectedTeacher}`);
-      console.log('Fetched schedule for teacher:', selectedTeacher, data);
-      console.log('Calculated dayName:', dayName);
-      // Filter for the selected day (case-insensitive just in case)
       const daySchedule = data.filter(s => s.day_of_week.toLowerCase() === dayName.toLowerCase());
-      console.log('Filtered daySchedule:', daySchedule);
       
       if (daySchedule.length === 0) {
         alert('No schedule found for this teacher on ' + dayName);
@@ -69,9 +63,8 @@ const AdminSubstitutions = () => {
 
       setTeacherSchedule(daySchedule);
       
-      // Fetch all suggestions in parallel
       const suggestionPromises = daySchedule.map(slot => 
-        api.get(`/attendance/suggest?day_of_week=${slot.day_of_week}&period_id=${slot.period_id}`)
+        api.get(`/substitutions/suggest?day_of_week=${slot.day_of_week}&period_id=${slot.period_id}`)
           .then(res => ({ periodId: slot.period_id, data: res.data }))
       );
       
@@ -83,14 +76,14 @@ const AdminSubstitutions = () => {
       setSuggestions(newSuggestions);
     } catch (err) {
       console.error(err);
-      alert('Failed to load schedule. Please check console.');
+      alert('Failed to load schedule.');
     }
   };
 
   const handleAssign = async (slot, substituteId) => {
     if (!substituteId) return;
     try {
-      await api.post('/attendance/substitute', {
+      await api.post('/substitutions/assign', {
         absent_teacher_id: selectedTeacher,
         substitute_teacher_id: substituteId,
         timetable_id: slot.id,
@@ -113,8 +106,8 @@ const AdminSubstitutions = () => {
           onClick={() => setIsModalOpen(true)}
           className="bg-indigo-600 text-white px-6 py-3 rounded-xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all transform hover:-translate-y-0.5 flex items-center gap-2 font-bold"
         >
-          <UserMinus size={20} />
-          Mark Absence
+          <Clock size={20} />
+          Create Substitution
         </button>
       </div>
 

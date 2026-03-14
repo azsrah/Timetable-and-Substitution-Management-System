@@ -110,3 +110,95 @@ exports.saveTimetableSlot = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
+// Get today's schedule for a student or teacher (merges base timetable with substitutions)
+exports.getTodaySchedule = async (req, res) => {
+  const { role, id } = req.params;
+  const dayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+  const today = new Date().toISOString().split('T')[0];
+
+  try {
+    let baseQuery = '';
+    let substitutesQuery = '';
+    let params = [];
+
+    if (role === 'Student') {
+      // For a student, we get the timetable of their class
+      baseQuery = `
+        SELECT t.id as timetable_id, t.day_of_week, p.name as period_name, p.start_time, p.end_time,
+               s.name as subject_name, u.name as teacher_name, c.grade, c.section, t.period_id
+        FROM timetables t
+        JOIN periods p ON t.period_id = p.id
+        JOIN subjects s ON t.subject_id = s.id
+        JOIN users u ON t.teacher_id = u.id
+        JOIN classes c ON t.class_id = c.id
+        WHERE t.class_id = (SELECT class_id FROM users WHERE id = ?) AND t.day_of_week = ?
+        ORDER BY p.start_time
+      `;
+      params = [id, dayName];
+
+      substitutesQuery = `
+        SELECT s.timetable_id, u.name as substitute_teacher_name
+        FROM substitutions s
+        JOIN users u ON s.substitute_teacher_id = u.id
+        WHERE s.date = ? AND s.status = 'Accepted'
+      `;
+    } else if (role === 'Teacher') {
+      // For a teacher, we get their assignments AND where they are substituting
+      // 1. Base schedule for today
+      baseQuery = `
+         SELECT t.id as timetable_id, t.day_of_week, p.name as period_name, p.start_time, p.end_time,
+                s.name as subject_name, c.grade, c.section, t.period_id, 'Regular' as type
+         FROM timetables t
+         JOIN periods p ON t.period_id = p.id
+         JOIN subjects s ON t.subject_id = s.id
+         JOIN classes c ON t.class_id = c.id
+         WHERE t.teacher_id = ? AND t.day_of_week = ?
+         ORDER BY p.start_time
+      `;
+      params = [id, dayName];
+
+      // 2. Where this teacher is SUBSTITUTING today
+      substitutesQuery = `
+        SELECT s.timetable_id, t.day_of_week, p.name as period_name, p.start_time, p.end_time,
+               sub.name as subject_name, c.grade, c.section, t.period_id, 'Substitution' as type
+        FROM substitutions s
+        JOIN timetables t ON s.timetable_id = t.id
+        JOIN periods p ON t.period_id = p.id
+        JOIN subjects sub ON t.subject_id = sub.id
+        JOIN classes c ON t.class_id = c.id
+        WHERE s.substitute_teacher_id = ? AND s.date = ? AND s.status = 'Accepted'
+      `;
+    }
+
+    const [baseRows] = await pool.query(baseQuery, params);
+    
+    if (role === 'Student') {
+       const [subRows] = await pool.query(substitutesQuery, [today]);
+       // Merge: if a timetable_id is in subRows, replace teacher_name
+       const merged = baseRows.map(row => {
+         const sub = subRows.find(s => s.timetable_id === row.timetable_id);
+         if (sub) {
+           return { ...row, teacher_name: sub.substitute_teacher_name, is_substituted: true };
+         }
+         return row;
+       });
+       return res.json(merged);
+    } else {
+       // For teacher, merge base schedule (minus removals) with new assignments
+       // First, find if any of the teacher's base classes are being substituted BY OTHERS (meaning they are absent/off)
+       const [removals] = await pool.query('SELECT timetable_id FROM substitutions WHERE absent_teacher_id = ? AND date = ? AND status = "Accepted"', [id, today]);
+       const removalIds = removals.map(r => r.timetable_id);
+
+       const [subAssignments] = await pool.query(substitutesQuery, [id, today]);
+
+       const filteredBase = baseRows.filter(row => !removalIds.includes(row.timetable_id));
+       const merged = [...filteredBase, ...subAssignments].sort((a, b) => a.start_time.localeCompare(b.start_time));
+       
+       return res.json(merged);
+    }
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};

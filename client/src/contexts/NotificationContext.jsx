@@ -14,16 +14,32 @@ export const NotificationProvider = ({ children }) => {
     setSocket(newSocket);
 
     if (user) {
+      // User-specific notifications
       newSocket.on(`notification_${user.id}`, (data) => {
-        setNotifications((prev) => [data, ...prev]);
-        // Also could trigger a toast here
+        setNotifications((prev) => [{ ...data, id: Date.now(), createdAt: new Date() }, ...prev]);
         alert(`New Notification: ${data.message}`);
       });
+
+      // Class-specific notifications (for students)
+      if (user.role === 'Student' && user.class_id) {
+        newSocket.on(`notification_class_${user.class_id}`, (data) => {
+          setNotifications((prev) => [{ ...data, id: Date.now(), createdAt: new Date() }, ...prev]);
+          alert(`Class Update: ${data.message}`);
+        });
+      }
     }
 
     // Global notifications like timetable changes
     newSocket.on('timetable_updated', (data) => {
       setNotifications((prev) => [{ message: `Timetable updated for Class ${data.class_id}` }, ...prev]);
+    });
+
+    newSocket.on('substitution_accepted', (data) => {
+      if (user && user.role === 'Admin') {
+        const notif = { ...data, id: Date.now(), createdAt: new Date() };
+        setNotifications((prev) => [notif, ...prev]);
+        alert(`Admin Alert: ${data.message}`);
+      }
     });
 
     return () => newSocket.close();

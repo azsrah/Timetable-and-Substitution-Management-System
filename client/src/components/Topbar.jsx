@@ -41,9 +41,12 @@ const Topbar = () => {
                 {notifications?.length === 0 ? (
                   <p className="text-gray-500 text-sm p-4 text-center">No new notifications</p>
                 ) : (
-                  notifications?.map((n, i) => (
-                    <div key={i} className="px-4 py-3 hover:bg-gray-50 border-b border-gray-50 text-sm text-gray-700 last:border-0">
-                      {n.message}
+                  notifications?.map((n) => (
+                    <div key={n.id} className="px-4 py-3 hover:bg-gray-50 border-b border-gray-50 last:border-0 transition-colors">
+                      <p className="text-sm text-gray-700 leading-tight mb-1">{n.message}</p>
+                      <span className="text-[10px] text-gray-400 font-medium">
+                        {n.createdAt ? new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'}
+                      </span>
                     </div>
                   ))
                 )}
