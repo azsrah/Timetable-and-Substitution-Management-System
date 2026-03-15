@@ -2,11 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '../../components/Card';
 import Modal from '../../components/Modal';
 import api from '../../services/api';
+import { useNotifications } from '../../contexts/NotificationContext';
+import { Eye, EyeOff } from 'lucide-react';
 
 const UserManagement = () => {
+  const { addNotification } = useNotifications();
   const [users, setUsers] = useState([]);
   const [activeTab, setActiveTab] = useState('Teachers'); // 'Teachers' or 'Students'
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({ name: '', email: '', password: '', is_temporary_teacher: false, subject_ids: [] });
   const [subjects, setSubjects] = useState([]);
 
@@ -15,7 +19,7 @@ const UserManagement = () => {
       const { data } = await api.get('/users');
       setUsers(data);
     } catch (err) {
-      alert('Error fetching users');
+      addNotification({ message: 'Error fetching users', type: 'error' });
     }
   };
 
@@ -41,7 +45,7 @@ const UserManagement = () => {
       setFormData({ name: '', email: '', password: '', is_temporary_teacher: false, subject_ids: [] });
       fetchUsers();
     } catch (err) {
-      alert('Failed to add teacher');
+      addNotification({ message: 'Failed to add teacher', type: 'error' });
     }
   };
 
@@ -50,7 +54,7 @@ const UserManagement = () => {
       await api.put(`/users/${id}/status`, { status });
       fetchUsers();
     } catch (err) {
-      alert('Failed to update status');
+      addNotification({ message: 'Failed to update status', type: 'error' });
     }
   };
 
@@ -60,7 +64,7 @@ const UserManagement = () => {
       await api.delete(`/users/${id}`);
       fetchUsers();
     } catch (err) {
-      alert('Failed to delete user');
+      addNotification({ message: 'Failed to delete user', type: 'error' });
     }
   };
 
@@ -167,7 +171,22 @@ const UserManagement = () => {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input required type="password" className="w-full border rounded p-2" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+            <div className="relative">
+              <input 
+                required 
+                type={showPassword ? "text" : "password"} 
+                className="w-full border rounded p-2 pr-10" 
+                value={formData.password} 
+                onChange={e => setFormData({...formData, password: e.target.value})} 
+              />
+              <button
+                type="button"
+                className="absolute right-2 top-2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
           <div className="flex items-center gap-2 mt-4">
             <input type="checkbox" id="temp" checked={formData.is_temporary_teacher} onChange={e => setFormData({...formData, is_temporary_teacher: e.target.checked})} />

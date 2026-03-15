@@ -24,7 +24,8 @@ const Sidebar = () => {
     { to: '/admin/substitutions', icon: Clock, label: 'Substitutions' },
     { to: '/admin/resources', icon: FileText, label: 'Resource Approvals' },
     { to: '/admin/announcements', icon: Megaphone, label: 'Announcements' },
-    { to: '/admin/reports', icon: BarChart2, label: 'Reports' },
+    { to: '/admin/reports/substitutions', icon: BarChart2, label: 'Substitution Reports' },
+    { to: '/admin/reports', icon: BarChart2, label: 'General Reports' },
   ];
 
   const teacherLinks = [
@@ -40,7 +41,9 @@ const Sidebar = () => {
     { to: '/student', icon: Activity, label: 'Overview' },
     { to: '/student/timetable', icon: Calendar, label: 'Class Timetable' },
     { to: '/student/announcements', icon: Megaphone, label: 'Announcements' },
+    { to: '/student/settings', icon: Settings, label: 'Settings' },
   ];
+
 
   let links = [];
   if (user?.role === 'Admin') links = adminLinks;
@@ -59,7 +62,7 @@ const Sidebar = () => {
           <NavLink
             key={link.to}
             to={link.to}
-            end={link.to === '/admin' || link.to === '/teacher' || link.to === '/student'}
+            end={link.to === '/admin' || link.to === '/teacher' || link.to === '/student' || link.to === '/admin/reports'}
             className={({ isActive }) =>
               `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
                 isActive 

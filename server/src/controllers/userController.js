@@ -90,3 +90,15 @@ exports.changePassword = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+exports.updateProfile = async (req, res) => {
+  const { contact_info } = req.body;
+  const userId = req.user.id;
+  try {
+    await pool.query('UPDATE users SET contact_info = ? WHERE id = ?', [contact_info, userId]);
+    res.json({ message: 'Profile updated successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};

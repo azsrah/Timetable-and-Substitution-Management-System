@@ -3,8 +3,10 @@ import TimetableGrid from '../../components/TimetableGrid';
 import { Card, CardHeader, CardContent } from '../../components/Card';
 import Modal from '../../components/Modal';
 import api from '../../services/api';
+import { useNotifications } from '../../contexts/NotificationContext';
 
 const TimetableEditor = () => {
+  const { addNotification } = useNotifications();
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState('');
   
@@ -77,10 +79,15 @@ const TimetableEditor = () => {
     try {
       await api.post('/timetable', slotForm);
       setModalOpen(false);
+      addNotification({ message: 'Slot saved successfully!', type: 'success' });
       loadTimetable(selectedClass); // Reload grid
     } catch (err) {
       // Show conflict errors clearly!
-      alert(err.response?.data?.message || 'Failed to save slot. Conflict detected.');
+      addNotification({ 
+        message: err.response?.data?.message || 'Failed to save slot. Conflict detected.', 
+        type: 'error',
+        title: 'Schedule Conflict'
+      });
     }
   };
 

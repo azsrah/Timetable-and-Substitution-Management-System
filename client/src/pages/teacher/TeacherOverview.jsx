@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNotifications } from '../../contexts/NotificationContext';
 import { Card, CardContent, CardHeader } from '../../components/Card';
 import { Calendar, Clock } from 'lucide-react';
 import api from '../../services/api';
@@ -9,6 +10,7 @@ import Modal from '../../components/Modal';
 
 const TeacherOverview = () => {
   const { user } = useAuth();
+  const { addNotification } = useNotifications();
   const [todaySchedule, setTodaySchedule] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [classes, setClasses] = useState([]);
@@ -34,7 +36,7 @@ const TeacherOverview = () => {
     e.preventDefault();
     try {
       if (annForm.target_audience === 'Specific' && annForm.target_class_ids.length === 0) {
-        alert('Please select at least one class');
+        addNotification({ message: 'Please select at least one class', type: 'warning' });
         return;
       }
       
@@ -44,9 +46,10 @@ const TeacherOverview = () => {
       });
       setIsModalOpen(false);
       setAnnForm({ title: '', message: '', target_audience: 'All', target_class_ids: [] });
-      window.location.reload(); 
+      addNotification({ message: 'Announcement published!', type: 'success' });
+      setTimeout(() => window.location.reload(), 1500); 
     } catch (err) {
-      alert('Failed to create announcement');
+      addNotification({ message: 'Failed to create announcement', type: 'error' });
     }
   };
 

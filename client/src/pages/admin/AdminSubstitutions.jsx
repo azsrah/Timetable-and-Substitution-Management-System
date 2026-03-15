@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '../../components/Card';
 import Modal from '../../components/Modal';
 import api from '../../services/api';
+import { useNotifications } from '../../contexts/NotificationContext';
 import { UserMinus, CheckCircle, Clock } from 'lucide-react';
 
 import { useLocation } from 'react-router-dom';
 
 const AdminSubstitutions = () => {
   const location = useLocation();
+  const { addNotification } = useNotifications();
 
   const [substitutions, setSubstitutions] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -56,7 +58,7 @@ const AdminSubstitutions = () => {
       const daySchedule = data.filter(s => s.day_of_week.toLowerCase() === dayName.toLowerCase());
       
       if (daySchedule.length === 0) {
-        alert('No schedule found for this teacher on ' + dayName);
+        addNotification({ message: 'No schedule found for this teacher on ' + dayName, type: 'warning' });
         setTeacherSchedule([]);
         return;
       }
@@ -76,7 +78,7 @@ const AdminSubstitutions = () => {
       setSuggestions(newSuggestions);
     } catch (err) {
       console.error(err);
-      alert('Failed to load schedule.');
+      addNotification({ message: 'Failed to load schedule.', type: 'error' });
     }
   };
 
@@ -89,10 +91,10 @@ const AdminSubstitutions = () => {
         timetable_id: slot.id,
         date: selectedDate
       });
-      alert('Substitution assigned');
+      addNotification({ message: 'Substitution assigned successfully!', type: 'success' });
       fetchSubstitutions();
     } catch (err) {
-      alert('Failed to assign');
+      addNotification({ message: 'Failed to assign substitution.', type: 'error' });
     }
   };
 

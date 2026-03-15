@@ -3,9 +3,11 @@ import { Card, CardHeader, CardContent } from '../../components/Card';
 import Modal from '../../components/Modal';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNotifications } from '../../contexts/NotificationContext';
 
 const ResourceRequests = () => {
   const { user } = useAuth();
+  const { addNotification } = useNotifications();
   const [resources, setResources] = useState([]);
   const [periods, setPeriods] = useState([]);
   const [myRequests, setMyRequests] = useState([]);
@@ -37,10 +39,10 @@ const ResourceRequests = () => {
     try {
       await api.post('/resources/requests', formData);
       setModalOpen(false);
-      alert('Request submitted for approval');
+      addNotification({ message: 'Request submitted for approval!', type: 'success' });
       // Fetch my requests again
     } catch (err) {
-      alert('Failed to submit request');
+      addNotification({ message: 'Failed to submit request.', type: 'error' });
     }
   };
 

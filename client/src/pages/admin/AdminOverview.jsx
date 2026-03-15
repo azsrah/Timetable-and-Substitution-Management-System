@@ -3,11 +3,13 @@ import { Card, CardContent, CardHeader } from '../../components/Card';
 import { Users, UserCheck, BookOpen, Clock, UserMinus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import { useNotifications } from '../../contexts/NotificationContext';
 import AnnouncementList from '../../components/AnnouncementList';
 import Modal from '../../components/Modal';
 
 const AdminOverview = () => {
   const navigate = useNavigate();
+  const { addNotification } = useNotifications();
   const [stats, setStats] = useState({ teachers: 0, students: 0, classes: 0 });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [annForm, setAnnForm] = useState({ title: '', message: '', target_audience: 'All' });
@@ -36,10 +38,11 @@ const AdminOverview = () => {
       await api.post('/announcements', annForm);
       setIsModalOpen(false);
       setAnnForm({ title: '', message: '', target_audience: 'All' });
+      addNotification({ message: 'Announcement published!', type: 'success' });
       // The AnnouncementList handles its own fetch or we can force refresh
-      window.location.reload(); // Simple way to refresh lists for now
+      setTimeout(() => window.location.reload(), 1500); // Simple way to refresh lists for now
     } catch (err) {
-      alert('Failed to create announcement');
+      addNotification({ message: 'Failed to create announcement.', type: 'error' });
     }
   };
 
@@ -55,7 +58,7 @@ const AdminOverview = () => {
       <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Dashboard Overview</h1>
-          <p className="text-slate-500 mt-1 font-medium italic">Welcome back, Super Admin</p>
+          
         </div>
         <div className="flex gap-3">
           <button 

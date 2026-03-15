@@ -59,7 +59,9 @@ const Topbar = () => {
         <div className="flex items-center gap-3">
           <div className="flex flex-col text-right">
             <span className="text-sm font-medium text-gray-900">{user?.name}</span>
-            <span className="text-xs text-gray-500">{user?.role}</span>
+            <span className="text-xs text-gray-500">
+              {user?.role === 'Student' && user?.grade ? `Grade ${user.grade}${user.section}` : user?.role}
+            </span>
           </div>
           <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold border-2 border-white shadow-sm">
             {user?.name?.charAt(0).toUpperCase()}
@@ -67,6 +69,7 @@ const Topbar = () => {
         </div>
       </div>
     </header>
+
   );
 };
 

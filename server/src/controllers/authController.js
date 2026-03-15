@@ -8,7 +8,12 @@ const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString()
 exports.login = async (req, res) => {
   const { email, password } = req.body;
   try {
-    const [rows] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+    const [rows] = await pool.query(`
+      SELECT u.*, c.grade, c.section 
+      FROM users u 
+      LEFT JOIN classes c ON u.class_id = c.id 
+      WHERE u.email = ?
+    `, [email]);
     if (rows.length === 0) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
@@ -35,7 +40,15 @@ exports.login = async (req, res) => {
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' });
 
-    res.json({ token, user: { id: user.id, name: user.name, role: user.role, email: user.email, class_id: user.class_id } });
+    res.json({ token, user: { 
+      id: user.id, 
+      name: user.name, 
+      role: user.role, 
+      email: user.email, 
+      class_id: user.class_id,
+      grade: user.grade,
+      section: user.section
+    } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -173,7 +186,13 @@ exports.resetPassword = async (req, res) => {
 
 exports.getMe = async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT id, name, email, role, contact_info, class_id, is_temporary_teacher, status FROM users WHERE id = ?', [req.user.id]);
+    const [rows] = await pool.query(`
+      SELECT u.id, u.name, u.email, u.role, u.contact_info, u.class_id, u.is_temporary_teacher, u.status,
+             c.grade, c.section
+      FROM users u
+      LEFT JOIN classes c ON u.class_id = c.id
+      WHERE u.id = ?
+    `, [req.user.id]);
     if(rows.length === 0) return res.status(404).json({message: 'User not found'});
     res.json(rows[0]);
   } catch (err) {

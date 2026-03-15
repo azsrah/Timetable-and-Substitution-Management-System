@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from '../../components/Card';
 import api from '../../services/api';
+import { useNotifications } from '../../contexts/NotificationContext';
 import { Check, X } from 'lucide-react';
 
 const ResourceApprovals = () => {
+  const { addNotification } = useNotifications();
   const [requests, setRequests] = useState([]);
 
   const fetchRequests = async () => {
@@ -22,9 +24,10 @@ const ResourceApprovals = () => {
   const handleStatusUpdate = async (id, status) => {
     try {
       await api.put(`/resources/requests/${id}`, { status });
+      addNotification({ message: `Request ${status.toLowerCase()}!`, type: 'success' });
       fetchRequests();
     } catch (err) {
-      alert('Failed to update status');
+      addNotification({ message: 'Failed to update status.', type: 'error' });
     }
   };
 
