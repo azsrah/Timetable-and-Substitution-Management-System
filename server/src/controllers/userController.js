@@ -6,7 +6,8 @@ exports.getAllUsers = async (req, res) => {
     const [rows] = await pool.query(`
       SELECT u.id, u.name, u.email, u.role, u.status, u.is_temporary_teacher,
              c.grade, c.section,
-             GROUP_CONCAT(DISTINCT s.name SEPARATOR ', ') as subjects
+             GROUP_CONCAT(DISTINCT s.name SEPARATOR ', ') as subjects,
+             GROUP_CONCAT(DISTINCT s.id SEPARATOR ',') as subject_ids_string
       FROM users u
       LEFT JOIN teacher_subjects ts ON u.id = ts.teacher_id
       LEFT JOIN subjects s ON ts.subject_id = s.id
@@ -41,6 +42,39 @@ exports.createTeacher = async (req, res) => {
     res.status(201).json({ message: 'Teacher created successfully', id: teacherId });
   } catch (err) {
     console.error('Error in createTeacher:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.updateTeacher = async (req, res) => {
+  const { id } = req.params;
+  const { name, email, password, is_temporary_teacher, subject_ids } = req.body;
+  
+  try {
+    let updateQuery = 'UPDATE users SET name = ?, email = ?, is_temporary_teacher = ?';
+    let updateParams = [name, email, is_temporary_teacher || false];
+
+    if (password) {
+      const passwordHash = await bcrypt.hash(password, 10);
+      updateQuery += ', password_hash = ?';
+      updateParams.push(passwordHash);
+    }
+    
+    updateQuery += ' WHERE id = ?';
+    updateParams.push(id);
+
+    await pool.query(updateQuery, updateParams);
+
+    await pool.query('DELETE FROM teacher_subjects WHERE teacher_id = ?', [id]);
+    
+    if (subject_ids && Array.isArray(subject_ids) && subject_ids.length > 0) {
+      const tsValues = subject_ids.map(sid => [id, parseInt(sid)]);
+      await pool.query('INSERT INTO teacher_subjects (teacher_id, subject_id) VALUES ?', [tsValues]);
+    }
+
+    res.json({ message: 'Teacher updated successfully' });
+  } catch (err) {
+    console.error('Error in updateTeacher:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };

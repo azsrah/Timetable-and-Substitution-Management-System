@@ -54,7 +54,7 @@ const Sidebar = () => {
     <aside className="w-64 bg-slate-900 text-slate-100 flex flex-col h-full shadow-xl">
       <div className="p-6 text-2xl font-bold border-b border-slate-700 flex items-center gap-2 text-indigo-400">
         <Calendar size={28} />
-        <span>SMS</span>
+        <span>GMMS</span>
       </div>
       
       <nav className="flex-1 py-6 px-4 space-y-2">

@@ -11,6 +11,7 @@ const UserManagement = () => {
   const [activeTab, setActiveTab] = useState('Teachers'); // 'Teachers' or 'Students'
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [editingUserId, setEditingUserId] = useState(null);
   const [formData, setFormData] = useState({ name: '', email: '', password: '', is_temporary_teacher: false, subject_ids: [] });
   const [subjects, setSubjects] = useState([]);
 
@@ -37,16 +38,38 @@ const UserManagement = () => {
     fetchSubjects();
   }, []);
 
-  const handleAddTeacher = async (e) => {
+  const handleSaveTeacher = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/users/teacher', formData);
+      if (editingUserId) {
+        const payload = { ...formData };
+        if (!payload.password) delete payload.password;
+        await api.put(`/users/teacher/${editingUserId}`, payload);
+        addNotification({ message: 'Teacher updated successfully', type: 'success' });
+      } else {
+        await api.post('/users/teacher', formData);
+        addNotification({ message: 'Teacher created successfully', type: 'success' });
+      }
       setIsModalOpen(false);
+      setEditingUserId(null);
       setFormData({ name: '', email: '', password: '', is_temporary_teacher: false, subject_ids: [] });
       fetchUsers();
     } catch (err) {
-      addNotification({ message: 'Failed to add teacher', type: 'error' });
+      addNotification({ message: `Failed to ${editingUserId ? 'update' : 'add'} teacher`, type: 'error' });
     }
+  };
+
+  const handleEditClick = (u) => {
+    const subject_ids = u.subject_ids_string ? u.subject_ids_string.split(',').map(Number) : [];
+    setFormData({
+      name: u.name,
+      email: u.email,
+      password: '', // leave empty for edit unless changing
+      is_temporary_teacher: Boolean(u.is_temporary_teacher),
+      subject_ids: subject_ids
+    });
+    setEditingUserId(u.id);
+    setIsModalOpen(true);
   };
 
   const handleStatusChange = async (id, status) => {
@@ -79,7 +102,11 @@ const UserManagement = () => {
         </div>
         {activeTab === 'Teachers' && (
           <button 
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => {
+              setEditingUserId(null);
+              setFormData({ name: '', email: '', password: '', is_temporary_teacher: false, subject_ids: [] });
+              setIsModalOpen(true);
+            }}
             className="bg-indigo-600 text-white px-4 py-2 rounded shadow hover:bg-indigo-700 transition"
           >
             + Add Teacher
@@ -144,6 +171,9 @@ const UserManagement = () => {
                     </span>
                   </td>
                   <td className="p-4 text-right space-x-2">
+                    {u.role === 'Teacher' && (
+                      <button onClick={() => handleEditClick(u)} className="text-blue-600 hover:underline">Edit</button>
+                    )}
                     {u.status === 'Inactive' && (
                       <button onClick={() => handleStatusChange(u.id, 'Active')} className="text-green-600 hover:underline">Approve</button>
                     )}
@@ -159,8 +189,8 @@ const UserManagement = () => {
         </CardContent>
       </Card>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add New Teacher">
-        <form onSubmit={handleAddTeacher} className="space-y-4">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingUserId ? "Edit Teacher" : "Add New Teacher"}>
+        <form onSubmit={handleSaveTeacher} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
             <input required className="w-full border rounded p-2" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
@@ -170,10 +200,12 @@ const UserManagement = () => {
             <input required type="email" className="w-full border rounded p-2" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {editingUserId ? "Password (leave blank to keep current)" : "Password"}
+            </label>
             <div className="relative">
               <input 
-                required 
+                required={!editingUserId} 
                 type={showPassword ? "text" : "password"} 
                 className="w-full border rounded p-2 pr-10" 
                 value={formData.password} 
@@ -214,7 +246,9 @@ const UserManagement = () => {
               ))}
             </div>
           </div>
-          <button type="submit" className="w-full bg-indigo-600 text-white p-2 rounded mt-6 hover:bg-indigo-700">Save Teacher</button>
+          <button type="submit" className="w-full bg-indigo-600 text-white p-2 rounded mt-6 hover:bg-indigo-700">
+            {editingUserId ? "Update Teacher" : "Save Teacher"}
+          </button>
         </form>
       </Modal>
     </div>

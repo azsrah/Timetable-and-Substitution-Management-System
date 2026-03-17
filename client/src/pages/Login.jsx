@@ -82,7 +82,7 @@ const Login = () => {
           <div className="max-w-md mx-auto w-full">
             <div className="mb-10 text-center md:text-left">
               <h1 className="text-3xl font-black text-slate-900 mb-2">Sign In</h1>
-              <p className="text-slate-500 font-medium">Please enter your credentials to continue</p>
+              
             </div>
             
             {error && (
