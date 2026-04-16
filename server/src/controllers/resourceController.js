@@ -72,6 +72,31 @@ exports.requestResource = async (req, res) => {
       [teacher_id, resource_id, date, period_id]
     );
 
+    // Notify all Admins
+    try {
+      const [admins] = await pool.query('SELECT id FROM users WHERE role = "Admin"');
+      const [teacher] = await pool.query('SELECT name FROM users WHERE id = ?', [teacher_id]);
+      const teacherName = teacher[0]?.name || 'A teacher';
+      const adminMessage = `${teacherName} has requested a resource.`;
+      
+      if (admins.length > 0) {
+        // Bulk database insertion
+        const adminNotifs = admins.map(admin => [admin.id, adminMessage, 'NewResourceRequest']);
+        await pool.query('INSERT INTO notifications (user_id, message, type) VALUES ?', [adminNotifs]);
+        
+        // Targeted real-time socket updates for each admin
+        admins.forEach(admin => {
+          req.io.emit(`notification_${admin.id}`, { 
+            message: adminMessage,
+            type: 'info',
+            title: 'Resource Request'
+          });
+        });
+      }
+    } catch (err) {
+      console.error('Failed to notify admins of resource request:', err);
+    }
+
     req.io.emit('new_resource_request', { id: result.insertId, teacher_id, resource_id, date, period_id });
 
     res.status(201).json({ message: 'Resource requested successfully' });

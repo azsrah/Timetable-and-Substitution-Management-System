@@ -97,6 +97,8 @@ async function initDB() {
         date DATE NOT NULL,
         status ENUM('Present', 'Absent', 'Leave') NOT NULL,
         user_type ENUM('Teacher', 'Student') NOT NULL,
+        check_in_time TIME,
+        check_out_time TIME,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )`,
@@ -138,7 +140,9 @@ async function initDB() {
       )`,
       // Alter tables if they already exist to add new columns
       `ALTER TABLE subjects ADD COLUMN required_resource_type ENUM('Lab', 'Ground', 'Auditorium', 'Library', 'None') DEFAULT 'None'`,
-      `ALTER TABLE timetables ADD COLUMN is_double_period BOOLEAN DEFAULT FALSE`
+      `ALTER TABLE timetables ADD COLUMN is_double_period BOOLEAN DEFAULT FALSE`,
+      `ALTER TABLE attendance_records ADD COLUMN check_in_time TIME`,
+      `ALTER TABLE attendance_records ADD COLUMN check_out_time TIME`
     ];
 
     for (let query of queries) {

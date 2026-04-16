@@ -164,6 +164,24 @@ exports.saveTimetableSlot = async (req, res) => {
       );
     }
     
+    const slotMessage = `Timetable updated for ${day_of_week}. New class scheduled for period ${period_id}.`;
+    
+    // Save notifications for students in the class
+    try {
+      const [students] = await pool.query('SELECT id FROM users WHERE class_id = ? AND role = "Student"', [class_id]);
+      if (students.length > 0) {
+        const studentNotifs = students.map(s => [s.id, slotMessage, 'TimetableUpdate']);
+        await pool.query('INSERT INTO notifications (user_id, message, type) VALUES ?', [studentNotifs]);
+      }
+      
+      // Save notification for the teacher
+      await pool.query('INSERT INTO notifications (user_id, message, type) VALUES (?, ?, ?)',
+        [teacher_id, `You have a new class scheduled for Class ${class_id} on ${day_of_week}.`, 'TimetableUpdate']
+      );
+    } catch (err) {
+      console.error('Failed to notify users of timetable update:', err);
+    }
+
     req.io.emit('timetable_updated', { class_id, day_of_week, period_id });
     res.json({ message: 'Timetable slot saved successfully' });
   } catch (err) {

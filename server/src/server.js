@@ -39,6 +39,9 @@ const resourceRoutes = require('./routes/resourceRoutes');
 const substitutionRoutes = require('./routes/substitutionRoutes');
 const userRoutes = require('./routes/userRoutes');
 const announcementRoutes = require('./routes/announcementRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const attendanceRoutes = require('./routes/attendanceRoutes');
+
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -48,6 +51,9 @@ app.use('/api/timetable', timetableRoutes);
 app.use('/api/resources', resourceRoutes);
 app.use('/api/substitutions', substitutionRoutes);
 app.use('/api/announcements', announcementRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/attendance', attendanceRoutes);
+
 
 // Socket Connection
 io.on('connection', (socket) => {

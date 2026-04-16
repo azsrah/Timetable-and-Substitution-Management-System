@@ -5,7 +5,7 @@ import { useNotifications } from '../../contexts/NotificationContext';
 import { Check, X } from 'lucide-react';
 
 const ResourceApprovals = () => {
-  const { addNotification } = useNotifications();
+  const { addNotification, socket } = useNotifications();
   const [requests, setRequests] = useState([]);
 
   const fetchRequests = async () => {
@@ -19,7 +19,13 @@ const ResourceApprovals = () => {
 
   useEffect(() => {
     fetchRequests();
-  }, []);
+    
+    // Listen for new requests to refresh the list in real-time
+    if (socket) {
+      socket.on('new_resource_request', fetchRequests);
+      return () => socket.off('new_resource_request', fetchRequests);
+    }
+  }, [socket]);
 
   const handleStatusUpdate = async (id, status) => {
     try {

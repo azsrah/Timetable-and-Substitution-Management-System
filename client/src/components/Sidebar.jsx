@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { 
   Users, BookOpen, Calendar, 
   Settings, LogOut, Clock, 
-  Bell, FileText, Activity, Megaphone, BarChart2
+  Bell, FileText, Activity, Megaphone, BarChart2, UserCheck
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -22,10 +22,13 @@ const Sidebar = () => {
     { to: '/admin/classes', icon: BookOpen, label: 'Classes & Subjects' },
     { to: '/admin/timetable', icon: Calendar, label: 'Timetable Editor' },
     { to: '/admin/substitutions', icon: Clock, label: 'Substitutions' },
+    { to: '/admin/attendance', icon: UserCheck, label: 'Attendance' },
     { to: '/admin/resources', icon: FileText, label: 'Resource Approvals' },
     { to: '/admin/announcements', icon: Megaphone, label: 'Announcements' },
     { to: '/admin/reports/substitutions', icon: BarChart2, label: 'Substitution Reports' },
+    { to: '/admin/reports/attendance', icon: BarChart2, label: 'Attendance Reports' },
     { to: '/admin/reports', icon: BarChart2, label: 'General Reports' },
+    { to: '/admin/settings', icon: Settings, label: 'Settings' },
   ];
 
   const teacherLinks = [

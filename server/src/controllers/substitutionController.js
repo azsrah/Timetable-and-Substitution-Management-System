@@ -40,7 +40,12 @@ exports.assignSubstitution = async (req, res) => {
     );
 
     // Notify the substitute teacher
-    req.io.emit(`notification_${substitute_teacher_id}`, { message: 'You have been assigned a new substitution class.' });
+    const message = 'You have been assigned a new substitution class.';
+    await pool.query('INSERT INTO notifications (user_id, message, type) VALUES (?, ?, ?)',
+      [substitute_teacher_id, message, 'SubstitutionAssigned']
+    );
+    req.io.emit(`notification_${substitute_teacher_id}`, { message });
+
 
     res.status(201).json({ message: 'Substitution assigned successfully' });
   } catch (err) {
@@ -125,19 +130,29 @@ exports.acceptSubstitution = async (req, res) => {
       message: `Teacher ${info.teacher_name} accepted the substitution for ${info.period_name} on ${formattedDate}.` 
     });
 
+    const studentMessage = `Class Update: Your ${info.subject_name} class for ${info.period_name} on ${formattedDate} will be taken by ${info.teacher_name}.`;
     req.io.emit(`notification_class_${info.class_id}`, {
-      message: `Class Update: Your ${info.subject_name} class for ${info.period_name} on ${formattedDate} will be taken by ${info.teacher_name}.`
+      message: studentMessage
     });
 
+    // Persistent notifications for students
     try {
-      const [students] = await pool.query('SELECT email FROM users WHERE class_id = ? AND role = "Student"', [info.class_id]);
-      const emails = students.map(s => s.email);
-      if (emails.length > 0) {
-        await emailService.sendSubstitutionEmail(emails, info);
+      const [students] = await pool.query('SELECT id, email FROM users WHERE class_id = ? AND role = "Student"', [info.class_id]);
+      
+      // Bulk insert notifications for students
+      if (students.length > 0) {
+        const notificationValues = students.map(s => [s.id, studentMessage, 'ClassSubstitution']);
+        await pool.query('INSERT INTO notifications (user_id, message, type) VALUES ?', [notificationValues]);
+        
+        const emails = students.map(s => s.email).filter(e => e);
+        if (emails.length > 0) {
+          await emailService.sendSubstitutionEmail(emails, info);
+        }
       }
-    } catch (emailErr) {
-      console.error('Failed to fetch students/send emails:', emailErr);
+    } catch (err) {
+      console.error('Failed to notify students:', err);
     }
+
 
     res.json({ message: 'Substitution accepted' });
   } catch (err) {
