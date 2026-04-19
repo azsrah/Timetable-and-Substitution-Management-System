@@ -47,20 +47,43 @@ const AdminAttendance = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      {/* Top Header */}
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6">
         <div>
           <h1 className="text-3xl font-black text-slate-900 tracking-tight">Teacher Attendance</h1>
           <p className="text-slate-500 mt-1 font-medium">View and monitor daily teacher check-in/out records.</p>
         </div>
-        <div className="flex items-center gap-3 bg-white px-4 py-3 rounded-2xl border border-slate-200 shadow-sm">
-          <Calendar size={18} className="text-indigo-600" />
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="border-none focus:ring-0 text-slate-700 font-bold outline-none bg-transparent"
-          />
+        
+        <div className="flex flex-wrap items-center gap-4">
+          {/* Status Pill Filters moved to top near date */}
+          <div className="flex items-center gap-2 p-1.5 bg-white rounded-2xl border border-slate-200 shadow-sm">
+            {filterButtons.map(btn => (
+              <button
+                key={btn.value}
+                onClick={() => setStatusFilter(btn.value)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 ${
+                  statusFilter === btn.value ? btn.activeClass : btn.inactiveClass
+                }`}
+              >
+                {btn.label}
+                <span className={`px-2 py-0.5 rounded-md text-[10px] font-black ${
+                  statusFilter === btn.value ? 'bg-white/20' : 'bg-slate-200 text-slate-500'
+                }`}>
+                  {btn.count}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-3 bg-white px-4 py-3 rounded-2xl border border-slate-200 shadow-sm">
+            <Calendar size={18} className="text-indigo-600" />
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="border-none focus:ring-0 text-slate-700 font-bold outline-none bg-transparent"
+            />
+          </div>
         </div>
       </div>
 
@@ -100,38 +123,15 @@ const AdminAttendance = () => {
         <CardHeader className="border-b border-slate-50 bg-slate-50/50 p-6">
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5">
             
-            {/* Left: Title + Pill Filters */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
-                  <UserCheck size={20} />
-                </div>
-                <div>
-                  <h2 className="text-xl font-black text-slate-900">Attendance Log</h2>
-                  <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">
-                    {new Date(date).toLocaleDateString(undefined, { dateStyle: 'long' })}
-                  </p>
-                </div>
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
+                <UserCheck size={20} />
               </div>
-
-              {/* Pill Toggle Buttons */}
-              <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-2xl">
-                {filterButtons.map(btn => (
-                  <button
-                    key={btn.value}
-                    onClick={() => setStatusFilter(btn.value)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 ${
-                      statusFilter === btn.value ? btn.activeClass : btn.inactiveClass
-                    }`}
-                  >
-                    {btn.label}
-                    <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black ${
-                      statusFilter === btn.value ? 'bg-white/20' : 'bg-slate-200 text-slate-500'
-                    }`}>
-                      {btn.count}
-                    </span>
-                  </button>
-                ))}
+              <div>
+                <h2 className="text-xl font-black text-slate-900">Attendance Log</h2>
+                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">
+                  {new Date(date).toLocaleDateString(undefined, { dateStyle: 'long' })}
+                </p>
               </div>
             </div>
 

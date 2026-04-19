@@ -59,6 +59,7 @@ const AppRoutes = () => {
   return (
     <NotificationProvider>
       <Routes>
+        <Route path="/" element={<Landing />} />
         <Route path="/admin" element={<ProtectedRoute allowedRoles={['Admin']}><AdminOverview /></ProtectedRoute>} />
         <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['Admin']}><UserManagement /></ProtectedRoute>} />
         <Route path="/admin/classes" element={<ProtectedRoute allowedRoles={['Admin']}><ClassSubjectManagement /></ProtectedRoute>} />
