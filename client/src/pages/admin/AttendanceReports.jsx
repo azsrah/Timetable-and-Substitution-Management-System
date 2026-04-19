@@ -96,8 +96,8 @@ const AttendanceReports = () => {
       
       doc.setFontSize(9);
       doc.setTextColor(100, 100, 100);
-      doc.text(`Generated: ${new Date().toLocaleString()}`, 15, 42);
-      doc.text(`Period: ${filters.startDate} to ${filters.endDate}`, 15, 47);
+      doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth / 2, 42, { align: 'center' });
+      doc.text(`Period: ${filters.startDate} to ${filters.endDate}`, pageWidth / 2, 47, { align: 'center' });
 
       const tableColumn = ["Date", "Teacher", "Check-In", "Check-Out", "Status", "Duration"];
       const tableRows = filteredData.map(a => {

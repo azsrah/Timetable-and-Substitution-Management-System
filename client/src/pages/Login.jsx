@@ -72,7 +72,7 @@ const Login = () => {
             <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10">
               <GraduationCap className="text-yellow-400 mb-2" size={20} />
               <div className="text-xs font-black uppercase tracking-widest text-white/60">Education</div>
-              <div className="font-bold">Smart SMS</div>
+              <div className="font-bold">Smart System</div>
             </div>
           </div>
         </div>

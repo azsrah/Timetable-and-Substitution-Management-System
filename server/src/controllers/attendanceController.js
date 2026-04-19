@@ -102,31 +102,54 @@ exports.checkOut = async (req, res) => {
 exports.getAllAttendance = async (req, res) => {
   const { date, startDate, endDate } = req.query;
   
-  let query = `
-    SELECT ar.*, u.name as teacher_name, u.email as teacher_email
-    FROM attendance_records ar
-    JOIN users u ON ar.user_id = u.id
-    WHERE ar.user_type = 'Teacher'
-  `;
-  const params = [];
-
-  if (startDate && endDate) {
-    query += ` AND ar.date BETWEEN ? AND ?`;
-    params.push(startDate, endDate);
-  } else if (date) {
-    query += ` AND ar.date = ?`;
-    params.push(date);
-  } else {
-    // Default to today
-    const targetDate = new Date().toISOString().split('T')[0];
-    query += ` AND ar.date = ?`;
-    params.push(targetDate);
-  }
-
-  query += ` ORDER BY ar.date DESC, ar.check_in_time DESC`;
-
   try {
-    const [rows] = await pool.query(query, params);
+    let rows;
+    if (date) {
+      // Single day view (Dashboard): Show ALL active teachers
+      [rows] = await pool.query(`
+        SELECT 
+          u.id as user_id, 
+          u.name as teacher_name, 
+          u.email as teacher_email,
+          ar.id,
+          ar.date,
+          COALESCE(ar.status, 'Absent') as status,
+          ar.check_in_time,
+          ar.check_out_time
+        FROM users u
+        LEFT JOIN attendance_records ar ON u.id = ar.user_id AND ar.date = ?
+        WHERE u.role = 'Teacher' AND u.status = 'Active'
+        ORDER BY teacher_name ASC
+      `, [date]);
+    } else if (startDate && endDate) {
+      // Range view (Reports): Show historical records only
+      [rows] = await pool.query(`
+        SELECT ar.*, u.name as teacher_name, u.email as teacher_email
+        FROM attendance_records ar
+        JOIN users u ON ar.user_id = u.id
+        WHERE ar.user_type = 'Teacher' AND ar.date BETWEEN ? AND ?
+        ORDER BY ar.date DESC, ar.check_in_time DESC
+      `, [startDate, endDate]);
+    } else {
+      // Default to today view (All teachers)
+      const targetDate = new Date().toISOString().split('T')[0];
+      [rows] = await pool.query(`
+        SELECT 
+          u.id as user_id, 
+          u.name as teacher_name, 
+          u.email as teacher_email,
+          ar.id,
+          ar.date,
+          COALESCE(ar.status, 'Absent') as status,
+          ar.check_in_time,
+          ar.check_out_time
+        FROM users u
+        LEFT JOIN attendance_records ar ON u.id = ar.user_id AND ar.date = ?
+        WHERE u.role = 'Teacher' AND u.status = 'Active'
+        ORDER BY teacher_name ASC
+      `, [targetDate]);
+    }
+    
     res.json(rows);
   } catch (err) {
     console.error(err);

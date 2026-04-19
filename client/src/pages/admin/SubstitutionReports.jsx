@@ -121,19 +121,19 @@ const SubstitutionReports = () => {
         console.warn('Logo not found at /logo.png, skipping logo addition.');
       }
 
-      // 3. Add Header
+      // 3. Add Header (Centered)
       doc.setFontSize(24);
       doc.setTextColor(0, 100, 0); // Darker Green
-      doc.text('KM/KM GOVT. MUSLIM MIXED SCHOOL', 45, 22);
+      doc.text('KM/KM GOVT. MUSLIM MIXED SCHOOL', pageWidth / 2, 22, { align: 'center' });
       
       doc.setFontSize(14);
       doc.setTextColor(180, 160, 0); // Gold/Yellow
-      doc.text('Substitution Management Report', 45, 30);
+      doc.text('Substitution Management Report', pageWidth / 2, 31, { align: 'center' });
       
       doc.setFontSize(9);
       doc.setTextColor(80, 80, 80);
-      doc.text(`Generated on: ${new Date().toLocaleString()}`, 45, 36);
-      doc.text(`Period: ${filters.startDate || 'All Time'} to ${filters.endDate || 'Now'}`, 45, 41);
+      doc.text(`Generated on: ${new Date().toLocaleString()}`, pageWidth / 2, 38, { align: 'center' });
+      doc.text(`Period: ${filters.startDate || 'All Time'} to ${filters.endDate || 'Now'}`, pageWidth / 2, 43, { align: 'center' });
 
       // Reset for table
       doc.setTextColor(0, 0, 0);

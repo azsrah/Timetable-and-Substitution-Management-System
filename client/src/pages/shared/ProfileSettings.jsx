@@ -124,14 +124,6 @@ const ProfileSettings = () => {
                     </div>
                   </div>
                 )}
-                {user?.role === 'Teacher' && (
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Type</label>
-                    <p className="text-lg font-semibold text-slate-800">
-                      {user.is_temporary_teacher ? 'Temporary Teacher' : 'Regular Faculty'}
-                    </p>
-                  </div>
-                )}
               </div>
 
               <form onSubmit={handleProfileSubmit} className="pt-6 border-t border-slate-100 space-y-4">

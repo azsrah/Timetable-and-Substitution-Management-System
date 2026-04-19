@@ -177,9 +177,6 @@ const UserManagement = () => {
                     {u.status === 'Inactive' && (
                       <button onClick={() => handleStatusChange(u.id, 'Active')} className="text-green-600 hover:underline">Approve</button>
                     )}
-                    {u.status === 'Active' && (
-                      <button onClick={() => handleStatusChange(u.id, 'Inactive')} className="text-amber-600 hover:underline">Suspend</button>
-                    )}
                     <button onClick={() => handleDelete(u.id)} className="text-red-600 hover:underline">Delete</button>
                   </td>
                 </tr>

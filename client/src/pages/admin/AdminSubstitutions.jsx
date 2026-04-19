@@ -157,7 +157,7 @@ const AdminSubstitutions = () => {
         </CardContent>
       </Card>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Mark Teacher Absence">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Create Substitution">
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-2">
