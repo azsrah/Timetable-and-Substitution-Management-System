@@ -1,13 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const attendanceController = require('../controllers/attendanceController');
-const { verifyToken, isAdmin, isTeacher } = require('../middlewares/authMiddleware');
+const { verifyToken, isAdmin } = require('../middlewares/authMiddleware');
 
-router.post('/', verifyToken, isAdmin, attendanceController.recordAttendance);
-router.get('/suggest', verifyToken, isAdmin, attendanceController.suggestSubstitute);
-router.post('/substitute', verifyToken, isAdmin, attendanceController.assignSubstitution);
-router.get('/substitutions', verifyToken, isAdmin, attendanceController.getAllSubstitutions);
-router.get('/teacher/:teacherId', verifyToken, attendanceController.getTeacherSubstitutions);
-router.put('/substitute/:id/accept', verifyToken, attendanceController.acceptSubstitution);
+router.get('/', verifyToken, isAdmin, attendanceController.getAllAttendance);
+router.get('/status', verifyToken, attendanceController.getStatus);
+router.post('/check-in', verifyToken, attendanceController.checkIn);
+router.post('/check-out', verifyToken, attendanceController.checkOut);
 
 module.exports = router;

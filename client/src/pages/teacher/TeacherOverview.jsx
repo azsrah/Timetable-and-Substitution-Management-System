@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNotifications } from '../../contexts/NotificationContext';
 import { Card, CardContent, CardHeader } from '../../components/Card';
-import { Calendar, Clock } from 'lucide-react';
+import { Calendar, Clock, UserCheck } from 'lucide-react';
 import api from '../../services/api';
 import AnnouncementList from '../../components/AnnouncementList';
 
@@ -9,21 +10,24 @@ import Modal from '../../components/Modal';
 
 const TeacherOverview = () => {
   const { user } = useAuth();
+  const { addNotification } = useNotifications();
   const [todaySchedule, setTodaySchedule] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [classes, setClasses] = useState([]);
   const [annForm, setAnnForm] = useState({ title: '', message: '', target_audience: 'All', target_class_ids: [] });
+  const [attendance, setAttendance] = useState({ status: 'Loading', record: null });
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [schedRes, clsRes] = await Promise.all([
-          api.get(`/timetable/teacher/${user.id}`),
-          api.get('/classes')
+        const [schedRes, clsRes, attRes] = await Promise.all([
+          api.get(`/timetable/today/Teacher/${user.id}`),
+          api.get('/classes'),
+          api.get('/attendance/status')
         ]);
-        const day = new Date().toLocaleDateString('en-US', { weekday: 'Long' });
-        setTodaySchedule(schedRes.data.filter(s => s.day_of_week === day));
+        setTodaySchedule(schedRes.data);
         setClasses(clsRes.data);
+        setAttendance(attRes.data);
       } catch (err) {
         console.error(err);
       }
@@ -35,7 +39,7 @@ const TeacherOverview = () => {
     e.preventDefault();
     try {
       if (annForm.target_audience === 'Specific' && annForm.target_class_ids.length === 0) {
-        alert('Please select at least one class');
+        addNotification({ message: 'Please select at least one class', type: 'warning' });
         return;
       }
       
@@ -45,9 +49,34 @@ const TeacherOverview = () => {
       });
       setIsModalOpen(false);
       setAnnForm({ title: '', message: '', target_audience: 'All', target_class_ids: [] });
-      window.location.reload(); 
+      addNotification({ message: 'Announcement published!', type: 'success' });
+      setTimeout(() => window.location.reload(), 1500); 
     } catch (err) {
-      alert('Failed to create announcement');
+      addNotification({ message: 'Failed to create announcement', type: 'error' });
+    }
+  };
+
+  const handleCheckIn = async () => {
+    try {
+      const res = await api.post('/attendance/check-in');
+      addNotification({ message: res.data.message, type: 'success' });
+      // Refresh status
+      const statusRes = await api.get('/attendance/status');
+      setAttendance(statusRes.data);
+    } catch (err) {
+      addNotification({ message: err.response?.data?.message || 'Check-in failed', type: 'error' });
+    }
+  };
+
+  const handleCheckOut = async () => {
+    try {
+      const res = await api.post('/attendance/check-out');
+      addNotification({ message: res.data.message, type: 'success' });
+      // Refresh status
+      const statusRes = await api.get('/attendance/status');
+      setAttendance(statusRes.data);
+    } catch (err) {
+      addNotification({ message: err.response?.data?.message || 'Check-out failed', type: 'error' });
     }
   };
 
@@ -79,8 +108,13 @@ const TeacherOverview = () => {
                 {todaySchedule.length > 0 ? todaySchedule.map((slot, i) => (
                   <div key={i} className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
                     <div className="font-bold text-indigo-600 w-24">{slot.start_time.substring(0,5)}</div>
-                    <div>
-                      <div className="font-semibold text-gray-900">{slot.subject_name}</div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <div className="font-semibold text-gray-900">{slot.subject_name}</div>
+                        {slot.type === 'Substitution' && (
+                          <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-bold uppercase tracking-wider">Substitution</span>
+                        )}
+                      </div>
                       <div className="text-sm text-gray-500">Class: {slot.grade}{slot.section}</div>
                     </div>
                   </div>
@@ -98,6 +132,65 @@ const TeacherOverview = () => {
         </div>
 
         <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <UserCheck className="text-indigo-600" /> Daily Attendance
+              </h2>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {attendance.status === 'NotCheckedIn' && (
+                  <div>
+                    <p className="text-sm text-gray-500 mb-4">You haven't checked in yet today.</p>
+                    <button 
+                      onClick={handleCheckIn}
+                      className="w-full bg-green-600 text-white py-2 rounded-lg font-bold hover:bg-green-700 transition"
+                    >
+                      Check In
+                    </button>
+                  </div>
+                )}
+
+                {attendance.status === 'CheckedIn' && (
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-sm text-gray-500">Check-in at:</span>
+                      <span className="font-bold text-green-600">{attendance.record?.check_in_time.substring(0,5)}</span>
+                    </div>
+                    <button 
+                      onClick={handleCheckOut}
+                      className="w-full bg-orange-600 text-white py-2 rounded-lg font-bold hover:bg-orange-700 transition"
+                    >
+                      Check Out
+                    </button>
+                  </div>
+                )}
+
+                {attendance.status === 'CheckedOut' && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-100 italic">
+                      <span className="text-xs text-gray-500">In: {attendance.record?.check_in_time.substring(0,5)}</span>
+                      <span className="text-xs text-gray-500">Out: {attendance.record?.check_out_time.substring(0,5)}</span>
+                    </div>
+                    <div className="p-3 bg-green-50 text-green-800 rounded-lg text-center font-bold text-sm border border-green-100">
+                      Attendance Recorded
+                    </div>
+                  </div>
+                )}
+
+                {attendance.status === 'Loading' && (
+                  <div className="animate-pulse flex space-x-4">
+                    <div className="flex-1 space-y-4 py-1">
+                      <div className="h-4 bg-slate-200 rounded"></div>
+                      <div className="h-10 bg-slate-200 rounded"></div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">

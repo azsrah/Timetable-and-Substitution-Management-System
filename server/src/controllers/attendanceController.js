@@ -1,116 +1,160 @@
 const pool = require('../config/db');
 
-// Record attendance
-exports.recordAttendance = async (req, res) => {
-  const { user_id, date, status, user_type } = req.body;
+// Get attendance status for today
+exports.getStatus = async (req, res) => {
+  const teacherId = req.user.id;
+  const today = new Date().toISOString().split('T')[0];
+
   try {
-    const [result] = await pool.query(
-      'INSERT INTO attendance_records (user_id, date, status, user_type) VALUES (?, ?, ?, ?)',
-      [user_id, date, status, user_type]
+    const [rows] = await pool.query(
+      'SELECT * FROM attendance_records WHERE user_id = ? AND date = ? AND user_type = "Teacher"',
+      [teacherId, today]
     );
-    res.status(201).json({ message: 'Attendance recorded successfully' });
+
+    if (rows.length === 0) {
+      return res.json({ status: 'NotCheckedIn', record: null });
+    }
+
+    const record = rows[0];
+    if (record.check_in_time && !record.check_out_time) {
+      return res.json({ status: 'CheckedIn', record });
+    } else if (record.check_in_time && record.check_out_time) {
+      return res.json({ status: 'CheckedOut', record });
+    }
+
+    res.json({ status: record.status, record });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
-// Suggest a substitute for an absent teacher for a given period
-exports.suggestSubstitute = async (req, res) => {
-  const { day_of_week, period_id } = req.query;
+// Check in
+exports.checkIn = async (req, res) => {
+  const teacherId = req.user.id;
+  const today = new Date().toISOString().split('T')[0];
+  const now = new Date().toTimeString().split(' ')[0]; // HH:MM:SS
+
+  try {
+    // Check if record already exists
+    const [existing] = await pool.query(
+      'SELECT * FROM attendance_records WHERE user_id = ? AND date = ? AND user_type = "Teacher"',
+      [teacherId, today]
+    );
+
+    if (existing.length > 0) {
+      if (existing[0].check_in_time) {
+        return res.status(400).json({ message: 'Already checked in today' });
+      }
+      // If record exists (maybe marked as Absent by admin?), update it
+      await pool.query(
+        'UPDATE attendance_records SET check_in_time = ?, status = "Present" WHERE id = ?',
+        [now, existing[0].id]
+      );
+    } else {
+      // Create new record
+      await pool.query(
+        'INSERT INTO attendance_records (user_id, date, status, user_type, check_in_time) VALUES (?, ?, "Present", "Teacher", ?)',
+        [teacherId, today, now]
+      );
+    }
+
+    res.status(200).json({ message: 'Checked in successfully', time: now });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Check out
+exports.checkOut = async (req, res) => {
+  const teacherId = req.user.id;
+  const today = new Date().toISOString().split('T')[0];
+  const now = new Date().toTimeString().split(' ')[0]; // HH:MM:SS
+
+  try {
+    const [existing] = await pool.query(
+      'SELECT * FROM attendance_records WHERE user_id = ? AND date = ? AND user_type = "Teacher"',
+      [teacherId, today]
+    );
+
+    if (existing.length === 0 || !existing[0].check_in_time) {
+      return res.status(400).json({ message: 'You must check in first' });
+    }
+
+    if (existing[0].check_out_time) {
+      return res.status(400).json({ message: 'Already checked out today' });
+    }
+
+    await pool.query(
+      'UPDATE attendance_records SET check_out_time = ? WHERE id = ?',
+      [now, existing[0].id]
+    );
+
+    res.status(200).json({ message: 'Checked out successfully', time: now });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Get all attendance records for a specific date or range (for admins)
+exports.getAllAttendance = async (req, res) => {
+  const { date, startDate, endDate } = req.query;
   
   try {
-    // A teacher is a good substitute if they are NOT booked for this period
-    // and ideally they teach the same subject or are just generally free.
-    // For simplicity: Find any teacher who is not in the timetables for this period and day.
-    const [freeTeachers] = await pool.query(`
-      SELECT u.id, u.name 
-      FROM users u
-      WHERE u.role = 'Teacher' AND u.status = 'Active'
-      AND u.id NOT IN (
-        SELECT teacher_id FROM timetables 
-        WHERE day_of_week = ? AND period_id = ?
-      )
-    `, [day_of_week, period_id]);
-
-    res.json(freeTeachers);
-  } catch (err) {
-    res.status(500).json({ message: 'Server error' });
-  }
-};
-
-// Assign substitution
-exports.assignSubstitution = async (req, res) => {
-  const { absent_teacher_id, substitute_teacher_id, timetable_id, date } = req.body;
-  try {
-    const [result] = await pool.query(
-      'INSERT INTO substitutions (absent_teacher_id, substitute_teacher_id, timetable_id, date, status) VALUES (?, ?, ?, ?, "Pending")',
-      [absent_teacher_id, substitute_teacher_id, timetable_id, date]
-    );
-
-    // Notify the substitute teacher
-    req.io.emit(`notification_${substitute_teacher_id}`, { message: 'You have been assigned a new substitution class.' });
-
-    res.status(201).json({ message: 'Substitution assigned successfully' });
-  } catch (err) {
-    res.status(500).json({ message: 'Server error' });
-  }
-};
-
-// List all substitutions (for admin)
-exports.getAllSubstitutions = async (req, res) => {
-  try {
-    const [rows] = await pool.query(`
-      SELECT s.id, s.date, s.status, 
-             u1.name as absent_teacher_name, 
-             u2.name as substitute_teacher_name,
-             p.name as period_name, p.start_time,
-             c.grade, c.section, sub.name as subject_name
-      FROM substitutions s
-      JOIN users u1 ON s.absent_teacher_id = u1.id
-      JOIN users u2 ON s.substitute_teacher_id = u2.id
-      JOIN timetables t ON s.timetable_id = t.id
-      JOIN periods p ON t.period_id = p.id
-      JOIN classes c ON t.class_id = c.id
-      JOIN subjects sub ON t.subject_id = sub.id
-      ORDER BY s.date DESC, p.start_time
-    `);
+    let rows;
+    if (date) {
+      // Single day view (Dashboard): Show ALL active teachers
+      [rows] = await pool.query(`
+        SELECT 
+          u.id as user_id, 
+          u.name as teacher_name, 
+          u.email as teacher_email,
+          ar.id,
+          ar.date,
+          COALESCE(ar.status, 'Absent') as status,
+          ar.check_in_time,
+          ar.check_out_time
+        FROM users u
+        LEFT JOIN attendance_records ar ON u.id = ar.user_id AND ar.date = ?
+        WHERE u.role = 'Teacher' AND u.status = 'Active'
+        ORDER BY teacher_name ASC
+      `, [date]);
+    } else if (startDate && endDate) {
+      // Range view (Reports): Show historical records only
+      [rows] = await pool.query(`
+        SELECT ar.*, u.name as teacher_name, u.email as teacher_email
+        FROM attendance_records ar
+        JOIN users u ON ar.user_id = u.id
+        WHERE ar.user_type = 'Teacher' AND ar.date BETWEEN ? AND ?
+        ORDER BY ar.date DESC, ar.check_in_time DESC
+      `, [startDate, endDate]);
+    } else {
+      // Default to today view (All teachers)
+      const targetDate = new Date().toISOString().split('T')[0];
+      [rows] = await pool.query(`
+        SELECT 
+          u.id as user_id, 
+          u.name as teacher_name, 
+          u.email as teacher_email,
+          ar.id,
+          ar.date,
+          COALESCE(ar.status, 'Absent') as status,
+          ar.check_in_time,
+          ar.check_out_time
+        FROM users u
+        LEFT JOIN attendance_records ar ON u.id = ar.user_id AND ar.date = ?
+        WHERE u.role = 'Teacher' AND u.status = 'Active'
+        ORDER BY teacher_name ASC
+      `, [targetDate]);
+    }
+    
     res.json(rows);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
-// List substitutions for a specific teacher
-exports.getTeacherSubstitutions = async (req, res) => {
-  const { teacherId } = req.params;
-  try {
-    const [rows] = await pool.query(`
-      SELECT s.id, s.date, s.status, 
-             u1.name as absent_teacher_name, 
-             p.name as period_name, p.start_time, p.end_time,
-             c.grade, c.section, sub.name as subject_name
-      FROM substitutions s
-      JOIN users u1 ON s.absent_teacher_id = u1.id
-      JOIN timetables t ON s.timetable_id = t.id
-      JOIN periods p ON t.period_id = p.id
-      JOIN classes c ON t.class_id = c.id
-      JOIN subjects sub ON t.subject_id = sub.id
-      WHERE s.substitute_teacher_id = ?
-      ORDER BY s.date DESC, p.start_time
-    `, [teacherId]);
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ message: 'Server error' });
-  }
-};
 
-// Substitute accepts
-exports.acceptSubstitution = async (req, res) => {
-  const { id } = req.params;
-  try {
-    await pool.query('UPDATE substitutions SET status = "Accepted" WHERE id = ?', [id]);
-    res.json({ message: 'Substitution accepted' });
-  } catch (err) {
-    res.status(500).json({ message: 'Server error' });
-  }
-};

@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Megaphone, Trash2 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotifications } from '../contexts/NotificationContext';
 
 const AnnouncementList = ({ isAdminView = false }) => {
   const [announcements, setAnnouncements] = useState([]);
   const { user } = useAuth();
+  const { addNotification } = useNotifications();
 
   const fetchAnnouncements = async () => {
     try {
@@ -24,9 +26,10 @@ const AnnouncementList = ({ isAdminView = false }) => {
     if (!confirm('Are you sure you want to delete this announcement?')) return;
     try {
       await api.delete(`/announcements/${id}`);
+      addNotification({ message: 'Announcement deleted.', type: 'success' });
       fetchAnnouncements();
     } catch (err) {
-      alert('Failed to delete');
+      addNotification({ message: 'Failed to delete announcement.', type: 'error' });
     }
   };
 

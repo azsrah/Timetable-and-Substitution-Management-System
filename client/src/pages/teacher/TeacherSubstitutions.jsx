@@ -2,15 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '../../components/Card';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNotifications } from '../../contexts/NotificationContext';
 import { Check, X, Clock } from 'lucide-react';
 
 const TeacherSubstitutions = () => {
   const { user } = useAuth();
+  const { addNotification } = useNotifications();
   const [substitutions, setSubstitutions] = useState([]);
 
   const fetchSubstitutions = async () => {
     try {
-      const { data } = await api.get(`/attendance/teacher/${user.id}`);
+      const { data } = await api.get(`/substitutions/teacher/${user.id}`);
       setSubstitutions(data);
     } catch (err) {
       console.error(err);
@@ -23,10 +25,11 @@ const TeacherSubstitutions = () => {
 
   const handleAccept = async (id) => {
     try {
-      await api.put(`/attendance/substitute/${id}/accept`);
+      await api.put(`/substitutions/${id}/accept`);
+      addNotification({ message: 'Substitution duty accepted!', type: 'success' });
       fetchSubstitutions();
     } catch (err) {
-      alert('Failed to accept');
+      addNotification({ message: 'Failed to accept duty.', type: 'error' });
     }
   };
 

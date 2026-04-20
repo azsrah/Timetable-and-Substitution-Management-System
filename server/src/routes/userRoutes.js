@@ -5,7 +5,10 @@ const { verifyToken, isAdmin } = require('../middlewares/authMiddleware');
 
 router.get('/', verifyToken, isAdmin, userController.getAllUsers);
 router.post('/teacher', verifyToken, isAdmin, userController.createTeacher);
+router.put('/teacher/:id', verifyToken, isAdmin, userController.updateTeacher);
 router.put('/:id/status', verifyToken, isAdmin, userController.updateUserStatus);
 router.delete('/:id', verifyToken, isAdmin, userController.deleteUser);
+router.put('/change-password', verifyToken, userController.changePassword);
+router.put('/profile', verifyToken, userController.updateProfile);
 
 module.exports = router;

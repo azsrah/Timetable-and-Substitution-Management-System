@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from '../../components/Card';
 import Modal from '../../components/Modal';
 import api from '../../services/api';
+import { useNotifications } from '../../contexts/NotificationContext';
 
 const ClassSubjectManagement = () => {
+  const { addNotification } = useNotifications();
   const [classes, setClasses] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [teachers, setTeachers] = useState([]);
@@ -29,7 +31,7 @@ const ClassSubjectManagement = () => {
       setSubjects(subRes.data);
       setTeachers(usersRes.data.filter(u => u.role === 'Teacher' && u.status === 'Active'));
     } catch (err) {
-      alert('Error fetching data');
+      addNotification({ message: 'Error fetching school data.', type: 'error' });
     }
   };
 
@@ -42,8 +44,9 @@ const ClassSubjectManagement = () => {
     try {
       await api.post('/classes', classForm);
       setClassOpen(false);
+      addNotification({ message: 'Class created successfully!', type: 'success' });
       fetchData();
-    } catch (err) { alert('Failed to create class'); }
+    } catch (err) { addNotification({ message: 'Failed to create class.', type: 'error' }); }
   };
 
   const handleCreateSubject = async (e) => {
@@ -51,8 +54,9 @@ const ClassSubjectManagement = () => {
     try {
       await api.post('/subjects', subjectForm);
       setSubjectOpen(false);
+      addNotification({ message: 'Subject created successfully!', type: 'success' });
       fetchData();
-    } catch (err) { alert('Failed to create subject'); }
+    } catch (err) { addNotification({ message: 'Failed to create subject.', type: 'error' }); }
   };
 
   const handleAssign = async (e) => {
@@ -60,8 +64,8 @@ const ClassSubjectManagement = () => {
     try {
       await api.post(`/classes/${assignForm.class_id}/subjects`, assignForm);
       setAssignOpen(false);
-      alert('Subject successfully assigned to class!');
-    } catch (err) { alert('Failed to assign subject'); }
+      addNotification({ message: 'Subject successfully assigned to class!', type: 'success' });
+    } catch (err) { addNotification({ message: 'Failed to assign subject.', type: 'error' }); }
   };
 
   return (

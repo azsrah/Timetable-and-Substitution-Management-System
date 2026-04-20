@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from '../../components/Card';
 import api from '../../services/api';
+import { useNotifications } from '../../contexts/NotificationContext';
 import { Check, X } from 'lucide-react';
 
 const ResourceApprovals = () => {
+  const { addNotification, socket } = useNotifications();
   const [requests, setRequests] = useState([]);
 
   const fetchRequests = async () => {
@@ -17,14 +19,21 @@ const ResourceApprovals = () => {
 
   useEffect(() => {
     fetchRequests();
-  }, []);
+    
+    // Listen for new requests to refresh the list in real-time
+    if (socket) {
+      socket.on('new_resource_request', fetchRequests);
+      return () => socket.off('new_resource_request', fetchRequests);
+    }
+  }, [socket]);
 
   const handleStatusUpdate = async (id, status) => {
     try {
       await api.put(`/resources/requests/${id}`, { status });
+      addNotification({ message: `Request ${status.toLowerCase()}!`, type: 'success' });
       fetchRequests();
     } catch (err) {
-      alert('Failed to update status');
+      addNotification({ message: 'Failed to update status.', type: 'error' });
     }
   };
 
