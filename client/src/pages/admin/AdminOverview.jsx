@@ -1,3 +1,11 @@
+// ─────────────────────────────────────────────────────────
+// AdminOverview.jsx — Admin Dashboard Home Page
+// Displays high-level school statistics (teacher count, student
+// count, class count) and a list of recent announcements.
+// Also provides quick-access buttons to manage substitutions
+// and create new announcements via a modal form.
+// ─────────────────────────────────────────────────────────
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '../../components/Card';
 import { Users, UserCheck, BookOpen, Clock, UserMinus } from 'lucide-react';
@@ -10,10 +18,14 @@ import Modal from '../../components/Modal';
 const AdminOverview = () => {
   const navigate = useNavigate();
   const { addNotification } = useNotifications();
+  // Counts displayed on the stat cards
   const [stats, setStats] = useState({ teachers: 0, students: 0, classes: 0 });
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false); // Controls the Create Announcement modal
   const [annForm, setAnnForm] = useState({ title: '', message: '', target_audience: 'All' });
 
+  // ── fetchStats ───────────────────────────────────────────
+  // Fetches all users and classes to calculate the dashboard summary numbers.
+  // Counts how many teachers and students exist, plus total classes.
   const fetchStats = async () => {
     try {
       const { data: users } = await api.get('/users');
@@ -28,19 +40,23 @@ const AdminOverview = () => {
     }
   };
 
+  // Load stats when the component first renders
   useEffect(() => {
     fetchStats();
   }, []);
 
+  // ── handleCreateAnnouncement ─────────────────────────────
+  // Submits the new announcement form data to the API,
+  // then closes the modal and refreshes the page to show the new item.
   const handleCreateAnnouncement = async (e) => {
     e.preventDefault();
     try {
       await api.post('/announcements', annForm);
       setIsModalOpen(false);
-      setAnnForm({ title: '', message: '', target_audience: 'All' });
+      setAnnForm({ title: '', message: '', target_audience: 'All' }); // Reset form
       addNotification({ message: 'Announcement published!', type: 'success' });
-      // The AnnouncementList handles its own fetch or we can force refresh
-      setTimeout(() => window.location.reload(), 1500); // Simple way to refresh lists for now
+      // Reload the page after a short delay so the new announcement appears in the list
+      setTimeout(() => window.location.reload(), 1500);
     } catch (err) {
       addNotification({ message: 'Failed to create announcement.', type: 'error' });
     }

@@ -1,24 +1,32 @@
+// ─────────────────────────────────────────────────────────
+// AdminSubstitutions.jsx — Manage Teacher Substitutions
+// Allows the admin to view all past and upcoming substitutions.
+// Admins can create a new substitution by selecting an absent
+// teacher and date, checking their schedule, and picking
+// an available substitute for each period.
+// ─────────────────────────────────────────────────────────
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '../../components/Card';
 import Modal from '../../components/Modal';
 import api from '../../services/api';
 import { useNotifications } from '../../contexts/NotificationContext';
 import { UserMinus, CheckCircle, Clock } from 'lucide-react';
-
 import { useLocation } from 'react-router-dom';
 
 const AdminSubstitutions = () => {
   const location = useLocation();
   const { addNotification } = useNotifications();
 
-  const [substitutions, setSubstitutions] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [teachers, setTeachers] = useState([]);
-  const [selectedTeacher, setSelectedTeacher] = useState('');
+  const [substitutions, setSubstitutions] = useState([]); // Master list of all substitutions
+  const [isModalOpen, setIsModalOpen] = useState(false);  // Modal visibility
+  const [teachers, setTeachers] = useState([]);           // List of all teachers for dropdown
+  const [selectedTeacher, setSelectedTeacher] = useState(''); // The absent teacher
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [teacherSchedule, setTeacherSchedule] = useState([]);
-  const [suggestions, setSuggestions] = useState({}); // periodId -> [teachers]
+  const [teacherSchedule, setTeacherSchedule] = useState([]); // Selected teacher's classes on that date
+  const [suggestions, setSuggestions] = useState({});     // Maps period_id to a list of available substitute teachers
 
+  // ── fetchSubstitutions & fetchTeachers ──────────────────
   const fetchSubstitutions = async () => {
     try {
       const { data } = await api.get('/substitutions/all');
@@ -47,6 +55,10 @@ const AdminSubstitutions = () => {
     }
   }, [location.search]);
 
+  // ── loadSchedule ────────────────────────────────────────
+  // Fetches the absent teacher's regular schedule for the selected date.
+  // Then, for EACH period they teach that day, fetches a list of
+  // available substitute teachers who are free during that period.
   const loadSchedule = async () => {
     if (!selectedTeacher || !selectedDate) return;
     try {
@@ -65,8 +77,9 @@ const AdminSubstitutions = () => {
 
       setTeacherSchedule(daySchedule);
       
+      // Parallel requests to find free teachers for every period the absent teacher has
       const suggestionPromises = daySchedule.map(slot => 
-        api.get(`/substitutions/suggest?day_of_week=${slot.day_of_week}&period_id=${slot.period_id}`)
+        api.get(`/substitutions/suggest?day_of_week=${slot.day_of_week}&period_id=${slot.period_id}&date=${selectedDate}`)
           .then(res => ({ periodId: slot.period_id, data: res.data }))
       );
       
@@ -82,6 +95,9 @@ const AdminSubstitutions = () => {
     }
   };
 
+  // ── handleAssign ────────────────────────────────────────
+  // Saves the substitution assignment. The server will automatically
+  // notify the assigned substitute via Socket.io.
   const handleAssign = async (slot, substituteId) => {
     if (!substituteId) return;
     try {
@@ -92,7 +108,7 @@ const AdminSubstitutions = () => {
         date: selectedDate
       });
       addNotification({ message: 'Substitution assigned successfully!', type: 'success' });
-      fetchSubstitutions();
+      fetchSubstitutions(); // Update the master list
     } catch (err) {
       addNotification({ message: 'Failed to assign substitution.', type: 'error' });
     }

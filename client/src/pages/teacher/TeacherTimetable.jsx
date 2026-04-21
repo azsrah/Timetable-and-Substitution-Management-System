@@ -1,3 +1,9 @@
+// ─────────────────────────────────────────────────────────
+// TeacherTimetable.jsx — Weekly View
+// Renders the global TimetableGrid component, but limits the
+// fetched data strictly to the logged-in teacher's schedule.
+// ─────────────────────────────────────────────────────────
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import TimetableGrid from '../../components/TimetableGrid';
@@ -13,14 +19,18 @@ const TeacherTimetable = () => {
       try {
         const [perRes, ttRes] = await Promise.all([
           api.get('/timetable/periods'),
-          api.get(`/timetable/teacher/${user.id}`)
+          api.get(`/timetable/teacher/${user.id}`) // Scoped to this teacher ONLY
         ]);
         setPeriods(perRes.data);
         
-        // Ensure timetableData mimics what TimetableGrid expects: subject_name and teacher_name (can use class/section instead here)
+        // ── Formatting for Grid ─────────────────────────────────
+        // The standard TimetableGrid assumes it's displaying a CLASS schedule,
+        // so it renders the 'teacher_name' at the bottom of the slot.
+        // Since the teacher knows their own name, we overwrite 'teacher_name'
+        // with the Class/Section so the teacher sees *who* they are teaching.
         const formatForGrid = ttRes.data.map(slot => ({
           ...slot,
-          teacher_name: `Grade ${slot.grade}-${slot.section}` // Display class instead of teacher string in grid
+          teacher_name: `Grade ${slot.grade}-${slot.section}` 
         }));
         setTimetableData(formatForGrid);
       } catch (err) {

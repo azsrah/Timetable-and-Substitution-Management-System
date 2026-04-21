@@ -1,3 +1,10 @@
+// ─────────────────────────────────────────────────────────
+// TeacherSubstitutions.jsx — Respond to Substitution Requests
+// Shows a teacher all substitutions they have been assigned to.
+// The teacher clicks 'Accept' to confirm they will cover the class,
+// which updates the database.
+// ─────────────────────────────────────────────────────────
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '../../components/Card';
 import api from '../../services/api';
@@ -10,6 +17,8 @@ const TeacherSubstitutions = () => {
   const { addNotification } = useNotifications();
   const [substitutions, setSubstitutions] = useState([]);
 
+  // ── fetchSubstitutions ──────────────────────────────────
+  // Gets all substitutions strictly targeted at the currently logged in teacher.
   const fetchSubstitutions = async () => {
     try {
       const { data } = await api.get(`/substitutions/teacher/${user.id}`);
@@ -20,14 +29,16 @@ const TeacherSubstitutions = () => {
   };
 
   useEffect(() => {
-    fetchSubstitutions();
-  }, [user.id]);
+    if (user?.id) fetchSubstitutions();
+  }, [user?.id]);
 
+  // ── handleAccept ────────────────────────────────────────
+  // Acknowledges the substituted class and shifts status from 'Pending' to 'Accepted'
   const handleAccept = async (id) => {
     try {
       await api.put(`/substitutions/${id}/accept`);
       addNotification({ message: 'Substitution duty accepted!', type: 'success' });
-      fetchSubstitutions();
+      fetchSubstitutions(); // Refresh to hide the accept button
     } catch (err) {
       addNotification({ message: 'Failed to accept duty.', type: 'error' });
     }

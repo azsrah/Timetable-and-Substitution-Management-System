@@ -1,3 +1,10 @@
+// ─────────────────────────────────────────────────────────
+// ResourceApprovals.jsx — Review Resource Bookings
+// Allows Admins to view pending requests made by teachers for 
+// special resources (e.g. Science Lab, IT Room, Main Hall).
+// Uses Socket.io to refresh the list in real time.
+// ─────────────────────────────────────────────────────────
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from '../../components/Card';
 import api from '../../services/api';
@@ -8,6 +15,7 @@ const ResourceApprovals = () => {
   const { addNotification, socket } = useNotifications();
   const [requests, setRequests] = useState([]);
 
+  // ── fetchRequests ───────────────────────────────────────
   const fetchRequests = async () => {
     try {
       const { data } = await api.get('/resources/requests');
@@ -21,12 +29,15 @@ const ResourceApprovals = () => {
     fetchRequests();
     
     // Listen for new requests to refresh the list in real-time
+    // Without this, the admin would have to refresh the page to see new requests.
     if (socket) {
       socket.on('new_resource_request', fetchRequests);
       return () => socket.off('new_resource_request', fetchRequests);
     }
   }, [socket]);
 
+  // ── handleStatusUpdate ──────────────────────────────────
+  // Process the accept or reject button clicks and refresh list
   const handleStatusUpdate = async (id, status) => {
     try {
       await api.put(`/resources/requests/${id}`, { status });

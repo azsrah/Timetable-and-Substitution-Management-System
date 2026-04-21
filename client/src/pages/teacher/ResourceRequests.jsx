@@ -1,3 +1,10 @@
+// ─────────────────────────────────────────────────────────
+// ResourceRequests.jsx — Teacher Resource Booking
+// Allows a teacher to request special resources (labs, grounds)
+// for specific periods. They can also view their past requests
+// and their approval status (Pending, Approved, Rejected).
+// ─────────────────────────────────────────────────────────
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from '../../components/Card';
 import Modal from '../../components/Modal';
@@ -15,6 +22,8 @@ const ResourceRequests = () => {
   const [isModalOpen, setModalOpen] = useState(false);
   const [formData, setFormData] = useState({ resource_id: '', date: '', period_id: '' });
 
+  // ── fetchData ────────────────────────────────────────────
+  // Loads available resources and non-break periods for the request dropdowns
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -32,6 +41,7 @@ const ResourceRequests = () => {
     }
   };
 
+  // Loads the history of requests this specific teacher has made
   const fetchMyRequests = async () => {
     try {
       const { data } = await api.get('/resources/my-requests');
@@ -43,19 +53,23 @@ const ResourceRequests = () => {
 
   useEffect(() => { fetchData(); }, []);
 
+  // ── handleSubmit ────────────────────────────────────────
+  // Posts the new resource request to the server, which internally
+  // alerts the admin via Socket.io.
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       await api.post('/resources/requests', formData);
       setModalOpen(false);
       addNotification({ message: 'Request submitted for approval!', type: 'success' });
-      fetchMyRequests(); // Refresh history
+      fetchMyRequests(); // Refresh history table instantly
       setFormData({ resource_id: '', date: '', period_id: '' });
     } catch (err) {
       addNotification({ message: 'Failed to submit request.', type: 'error' });
     }
   };
 
+  // Helper to color-code status badges in the history table
   const getStatusColor = (status) => {
     switch (status) {
       case 'Approved': return 'bg-emerald-100 text-emerald-700 border-emerald-200';

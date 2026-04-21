@@ -1,9 +1,18 @@
+// ─────────────────────────────────────────────────────────
+// ResetPassword.jsx — Step 2 of Password Reset Flow
+// The user enters the OTP from their email plus their new password.
+// The email is read from the URL query string (?email=...) that
+// ForgotPassword.jsx set when redirecting here.
+// On success, redirects to login after 3 seconds.
+// ─────────────────────────────────────────────────────────
+
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import api from '../services/api';
 import { Lock, CheckCircle, Eye, EyeOff } from 'lucide-react';
 
 const ResetPassword = () => {
+  // Form state for the three fields the user must fill in
   const [formData, setFormData] = useState({
     otp: '',
     newPassword: '',
@@ -11,11 +20,12 @@ const ResetPassword = () => {
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);     // Toggle new password visibility
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false); // Toggle confirm password visibility
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  // Extract the email from the URL query string passed by ForgotPassword.jsx
   const email = new URLSearchParams(location.search).get('email') || '';
 
   const handleChange = (e) => {
@@ -26,8 +36,13 @@ const ResetPassword = () => {
     }));
   };
 
+  // ── handleSubmit ─────────────────────────────────────────
+  // Validates that both password fields match, then submits the OTP
+  // and new password to the server. On success, shows a confirmation
+  // and redirects to the login page after 3 seconds.
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // Client-side validation: ensure both password fields are identical
     if (formData.newPassword !== formData.confirmPassword) {
       return setError('Passwords do not match');
     }
@@ -36,11 +51,12 @@ const ResetPassword = () => {
       setError('');
       setSuccess('');
       const { data } = await api.post('/auth/reset-password', { 
-        email, 
-        otp: formData.otp, 
+        email,                        // From URL query string
+        otp: formData.otp,            // 6-digit code from email
         newPassword: formData.newPassword 
       });
       setSuccess(data.message);
+      // Wait 3 seconds so the user can read the success message
       setTimeout(() => navigate('/login'), 3000);
     } catch (err) {
       setError(err.response?.data?.message || 'Reset failed');

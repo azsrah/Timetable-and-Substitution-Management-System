@@ -1,8 +1,16 @@
+// ─────────────────────────────────────────────────────────
+// notificationController.js — Notification Inbox Logic
+// Manages persistent in-app notifications stored in the database.
+// Users can view, mark as read, and clear their notification inbox.
+// ─────────────────────────────────────────────────────────
+
 const pool = require('../config/db');
 
-// Get all notifications for the logged-in user
+// ── getUserNotifications ──────────────────────────────────
+// Fetches the 50 most recent notifications for the logged-in user,
+// newest first. These are persistent (stored in DB), unlike Socket.io toasts.
 exports.getUserNotifications = async (req, res) => {
-  const user_id = req.user.id;
+  const user_id = req.user.id; // From JWT via verifyToken middleware
   try {
     const [rows] = await pool.query(
       'SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50',
@@ -15,10 +23,12 @@ exports.getUserNotifications = async (req, res) => {
   }
 };
 
-// Mark a single notification as read
+// ── markAsRead ────────────────────────────────────────────
+// Marks a single notification as read so the unread badge count decreases.
+// Requires user_id check to prevent users from marking others' notifications.
 exports.markAsRead = async (req, res) => {
-  const { id } = req.params;
-  const user_id = req.user.id;
+  const { id } = req.params;       // Notification ID from the URL
+  const user_id = req.user.id;     // Ensure only the owner can mark it
   try {
     await pool.query(
       'UPDATE notifications SET is_read = TRUE WHERE id = ? AND user_id = ?',
@@ -31,7 +41,9 @@ exports.markAsRead = async (req, res) => {
   }
 };
 
-// Mark all notifications as read for the user
+// ── markAllAsRead ─────────────────────────────────────────
+// Marks ALL of the user's unread notifications as read at once.
+// Triggered when the user clicks "Mark all as read" in the notification panel.
 exports.markAllAsRead = async (req, res) => {
   const user_id = req.user.id;
   try {
@@ -46,7 +58,9 @@ exports.markAllAsRead = async (req, res) => {
   }
 };
 
-// Delete all notifications for the user
+// ── clearNotifications ────────────────────────────────────
+// Deletes ALL notifications for the user — empties their inbox.
+// Triggered by the "Clear all" button in the notification panel.
 exports.clearNotifications = async (req, res) => {
   const user_id = req.user.id;
   try {

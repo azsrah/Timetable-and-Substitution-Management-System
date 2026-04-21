@@ -1,3 +1,9 @@
+// ─────────────────────────────────────────────────────────
+// ClassSubjectManagement.jsx — Manage School Classes & Subjects
+// Admin interface to Create new Classes (Grades 6-9), Create new Subjects,
+// and Assign subjects to classes (optionally with a default teacher).
+// ─────────────────────────────────────────────────────────
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from '../../components/Card';
 import Modal from '../../components/Modal';
@@ -10,16 +16,18 @@ const ClassSubjectManagement = () => {
   const [subjects, setSubjects] = useState([]);
   const [teachers, setTeachers] = useState([]);
 
-  // Modals state
+  // ── Modals state ─────────────────────────────────────────
   const [isClassOpen, setClassOpen] = useState(false);
   const [isSubjectOpen, setSubjectOpen] = useState(false);
   const [isAssignOpen, setAssignOpen] = useState(false);
 
-  // Form states
+  // ── Form states ──────────────────────────────────────────
   const [classForm, setClassForm] = useState({ grade: 6, section: 'A', room_number: '' });
   const [subjectForm, setSubjectForm] = useState({ name: '', code: '' });
   const [assignForm, setAssignForm] = useState({ class_id: '', subject_id: '', assigned_teacher_id: '' });
 
+  // ── fetchData ────────────────────────────────────────────
+  // Loads classes, subjects, and active teachers in parallel
   const fetchData = async () => {
     try {
       const [clsRes, subRes, usersRes] = await Promise.all([
@@ -39,26 +47,31 @@ const ClassSubjectManagement = () => {
     fetchData();
   }, []);
 
+  // ── Action Handlers ─────────────────────────────────────
+  
+  // Creates a new class (e.g., Grade 6, Section A)
   const handleCreateClass = async (e) => {
     e.preventDefault();
     try {
       await api.post('/classes', classForm);
       setClassOpen(false);
       addNotification({ message: 'Class created successfully!', type: 'success' });
-      fetchData();
+      fetchData(); // Refresh list
     } catch (err) { addNotification({ message: 'Failed to create class.', type: 'error' }); }
   };
 
+  // Creates a new subject (e.g., Mathematics, Code: MAT01)
   const handleCreateSubject = async (e) => {
     e.preventDefault();
     try {
       await api.post('/subjects', subjectForm);
       setSubjectOpen(false);
       addNotification({ message: 'Subject created successfully!', type: 'success' });
-      fetchData();
+      fetchData(); // Refresh list
     } catch (err) { addNotification({ message: 'Failed to create subject.', type: 'error' }); }
   };
 
+  // Links an existing subject to an existing class, optional default teacher
   const handleAssign = async (e) => {
     e.preventDefault();
     try {

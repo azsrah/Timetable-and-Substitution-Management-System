@@ -1,3 +1,10 @@
+// ─────────────────────────────────────────────────────────
+// AttendanceReports.jsx — Analytics for Attendance
+// Shows teacher attendance logs between two dates.
+// Operates on identical logic to SubstitutionReports:
+// Filters data client-side and generates a styled PDF.
+// ─────────────────────────────────────────────────────────
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '../../components/Card';
 import { FileText, Download, Calendar, Filter, CheckCircle, Clock, Search } from 'lucide-react';
@@ -18,12 +25,15 @@ const AttendanceReports = () => {
     search: ''
   });
 
+  // ── fetchAttendance ─────────────────────────────────────
+  // Unlike Substitutions, Attendance loads specifically for the requested date range
+  // from the server instead of all time, to save bandwidth.
   const fetchAttendance = async () => {
     setLoading(true);
     try {
       const { data } = await api.get(`/attendance?startDate=${filters.startDate}&endDate=${filters.endDate}`);
       setAttendance(data);
-      setFilteredData(data);
+      setFilteredData(data); // Default view shows everything returned
     } catch (err) {
       addNotification({ message: 'Failed to fetch attendance records', type: 'error' });
     } finally {
@@ -35,6 +45,7 @@ const AttendanceReports = () => {
     fetchAttendance();
   }, [filters.startDate, filters.endDate]);
 
+  // ── Apply Search Filter Client-side ─────────────────────
   useEffect(() => {
     let result = [...attendance];
 
@@ -99,6 +110,7 @@ const AttendanceReports = () => {
       doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth / 2, 42, { align: 'center' });
       doc.text(`Period: ${filters.startDate} to ${filters.endDate}`, pageWidth / 2, 47, { align: 'center' });
 
+      // Prepare rows for the PDF table, converting check-in/out times to total duration
       const tableColumn = ["Date", "Teacher", "Check-In", "Check-Out", "Status", "Duration"];
       const tableRows = filteredData.map(a => {
         let duration = '-';

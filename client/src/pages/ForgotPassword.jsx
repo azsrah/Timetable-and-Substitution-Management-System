@@ -1,14 +1,25 @@
+// ─────────────────────────────────────────────────────────
+// ForgotPassword.jsx — Step 1 of Password Reset Flow
+// The user enters their registered email address.
+// On success, a reset OTP is emailed to them and they are
+// redirected to the ResetPassword page (with email in the URL).
+// ─────────────────────────────────────────────────────────
+
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 
 const ForgotPassword = () => {
-  const [email, setEmail] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState('');      // Email the user types in
+  const [error, setError] = useState('');      // Server error (e.g. email not found)
+  const [success, setSuccess] = useState('');  // Confirmation message after OTP sent
+  const [loading, setLoading] = useState(false); // Disables button while request is running
   const navigate = useNavigate();
 
+  // ── handleSubmit ─────────────────────────────────────────
+  // Calls the forgot-password API endpoint with the user's email.
+  // On success: shows a confirmation message, then redirects to
+  // the reset page after 2 seconds (passing email via URL query param).
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -17,6 +28,7 @@ const ForgotPassword = () => {
       setSuccess('');
       const { data } = await api.post('/auth/forgot-password', { email });
       setSuccess(data.message);
+      // Redirect to reset page with email in URL so ResetPassword.jsx can pre-fill it
       setTimeout(() => navigate(`/reset-password?email=${email}`), 2000);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to send OTP');

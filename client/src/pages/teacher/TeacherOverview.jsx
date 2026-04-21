@@ -1,3 +1,12 @@
+// ─────────────────────────────────────────────────────────
+// TeacherOverview.jsx — Main Teacher Dashboard
+// Provides a unified view of:
+// 1. Today's schedule (including substitutions).
+// 2. Daily Attendance status (Check In/Out buttons).
+// 3. Outstanding announcements from admins.
+// 4. Ability for the teacher to send announcements.
+// ─────────────────────────────────────────────────────────
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotifications } from '../../contexts/NotificationContext';
@@ -5,7 +14,6 @@ import { Card, CardContent, CardHeader } from '../../components/Card';
 import { Calendar, Clock, UserCheck } from 'lucide-react';
 import api from '../../services/api';
 import AnnouncementList from '../../components/AnnouncementList';
-
 import Modal from '../../components/Modal';
 
 const TeacherOverview = () => {
@@ -17,13 +25,15 @@ const TeacherOverview = () => {
   const [annForm, setAnnForm] = useState({ title: '', message: '', target_audience: 'All', target_class_ids: [] });
   const [attendance, setAttendance] = useState({ status: 'Loading', record: null });
 
+  // ── INIT: Fetch Dashboard Components ────────────────────
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Run requests in parallel to load dashboard faster
         const [schedRes, clsRes, attRes] = await Promise.all([
-          api.get(`/timetable/today/Teacher/${user.id}`),
-          api.get('/classes'),
-          api.get('/attendance/status')
+          api.get(`/timetable/today/Teacher/${user.id}`), // Today's regular classes + substitutions
+          api.get('/classes'),                            // For the announcement target dropdown
+          api.get('/attendance/status')                   // Is teacher checked in/out today?
         ]);
         setTodaySchedule(schedRes.data);
         setClasses(clsRes.data);
@@ -32,9 +42,12 @@ const TeacherOverview = () => {
         console.error(err);
       }
     };
-    if (user) fetchData();
+    if (user) fetchData(); // Only run if user is populated by AuthContext
   }, [user?.id]);
 
+  // ── handleCreateAnnouncement ────────────────────────────
+  // Allows a teacher to send an alert to all their students,
+  // or target a specific class (like Grade 6A).
   const handleCreateAnnouncement = async (e) => {
     e.preventDefault();
     try {
@@ -50,17 +63,18 @@ const TeacherOverview = () => {
       setIsModalOpen(false);
       setAnnForm({ title: '', message: '', target_audience: 'All', target_class_ids: [] });
       addNotification({ message: 'Announcement published!', type: 'success' });
+      // Refresh to show it in the list
       setTimeout(() => window.location.reload(), 1500); 
     } catch (err) {
       addNotification({ message: 'Failed to create announcement', type: 'error' });
     }
   };
 
+  // ── Check-In / Check-Out Handlers ───────────────────────
   const handleCheckIn = async () => {
     try {
       const res = await api.post('/attendance/check-in');
       addNotification({ message: res.data.message, type: 'success' });
-      // Refresh status
       const statusRes = await api.get('/attendance/status');
       setAttendance(statusRes.data);
     } catch (err) {
@@ -72,7 +86,6 @@ const TeacherOverview = () => {
     try {
       const res = await api.post('/attendance/check-out');
       addNotification({ message: res.data.message, type: 'success' });
-      // Refresh status
       const statusRes = await api.get('/attendance/status');
       setAttendance(statusRes.data);
     } catch (err) {

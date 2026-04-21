@@ -1,9 +1,23 @@
+// ─────────────────────────────────────────────────────────
+// Register.jsx — Student Self-Registration Page
+// Allows new students to create an account.
+//
+// Two-step flow:
+//   Step 1 — 'register': Fill in name, email, password, class & contact info
+//   Step 2 — 'verify': Enter the 6-digit OTP sent to the email address
+//
+// After successful OTP verification, the student is redirected
+// to the login page (with a 3-second delay so they see the success message).
+// Note: Accounts start as Inactive — admin must approve before the student can log in.
+// ─────────────────────────────────────────────────────────
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import api from '../services/api';
 
 const Register = () => {
+  // All registration form fields grouped into one state object
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -11,19 +25,22 @@ const Register = () => {
     contact_info: '',
     class_id: ''
   });
-  const [showPassword, setShowPassword] = useState(false);
-  const [otp, setOtp] = useState('');
-  const [step, setStep] = useState('register'); // 'register' or 'verify'
-  const [classes, setClasses] = useState([]);
+  const [showPassword, setShowPassword] = useState(false); // Toggle password visibility
+  const [otp, setOtp] = useState('');                      // OTP entered in step 2
+  const [step, setStep] = useState('register');            // Current step: 'register' or 'verify'
+  const [classes, setClasses] = useState([]);              // Available class options from the server
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
 
+  // ── Load Classes on Mount ────────────────────────────────
+  // Fetch all available classes for the Grade & Section dropdown
   useEffect(() => {
     const fetchClasses = async () => {
       try {
         const { data } = await api.get('/classes');
         setClasses(data);
+        // Pre-select the first class to avoid an empty dropdown on load
         if (data.length > 0) {
           setFormData(prev => ({ ...prev, class_id: data[0].id }));
         }
@@ -34,6 +51,9 @@ const Register = () => {
     fetchClasses();
   }, []);
 
+  // ── handleSubmit ─────────────────────────────────────────
+  // Step 1: Sends registration data to the server.
+  // On success, the server sends an OTP email and we advance to step 2.
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -41,12 +61,15 @@ const Register = () => {
       setSuccess('');
       const { data } = await api.post('/auth/register', formData);
       setSuccess(data.message);
-      setStep('verify');
+      setStep('verify'); // Move to OTP verification step
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to register');
     }
   };
 
+  // ── handleVerifyOTP ──────────────────────────────────────
+  // Step 2: Submits the OTP the user received in their email.
+  // On success, waits 3 seconds then redirects to login.
   const handleVerifyOTP = async (e) => {
     e.preventDefault();
     try {
@@ -54,6 +77,7 @@ const Register = () => {
       setSuccess('');
       const { data } = await api.post('/auth/verify-email', { email: formData.email, otp });
       setSuccess(data.message);
+      // Redirect after 3 seconds so the user can read the success message
       setTimeout(() => navigate('/login'), 3000);
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid OTP');
@@ -62,6 +86,8 @@ const Register = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      
+      {/* ── Page Title ───────────────────────────────── */}
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
           {step === 'register' ? 'Student Registration' : 'Verify Your Email'}
@@ -71,13 +97,18 @@ const Register = () => {
         </p>
       </div>
 
+      {/* ── Form Card ────────────────────────────────── */}
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          
+          {/* Error and success alerts */}
           {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded text-sm font-medium border border-red-200">{error}</div>}
           {success && <div className="mb-4 p-3 bg-green-100 text-green-700 rounded text-sm font-medium border border-green-200">{success}</div>}
           
           {step === 'register' ? (
+            // ── Step 1: Registration Form ─────────────
             <form className="space-y-6" onSubmit={handleSubmit}>
+              {/* Full Name */}
               <div>
                 <label className="block text-sm font-medium text-gray-700">Full Name</label>
                 <div className="mt-1">
@@ -85,6 +116,7 @@ const Register = () => {
                 </div>
               </div>
 
+              {/* Email */}
               <div>
                 <label className="block text-sm font-medium text-gray-700">Email address</label>
                 <div className="mt-1">
@@ -92,6 +124,7 @@ const Register = () => {
                 </div>
               </div>
 
+              {/* Password with visibility toggle */}
               <div>
                 <label className="block text-sm font-medium text-gray-700">Password</label>
                 <div className="mt-1 relative">
@@ -113,6 +146,7 @@ const Register = () => {
                 </div>
               </div>
 
+              {/* Grade & Section dropdown — fetched from the server */}
               <div>
                 <label className="block text-sm font-medium text-gray-700">Grade & Section</label>
                 <div className="mt-1">
@@ -130,6 +164,7 @@ const Register = () => {
                 </div>
               </div>
 
+              {/* Contact info (parent phone/address) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700">Contact Information</label>
                 <div className="mt-1">
@@ -144,10 +179,12 @@ const Register = () => {
               </div>
             </form>
           ) : (
+            // ── Step 2: OTP Verification Form ────────
             <form className="space-y-6" onSubmit={handleVerifyOTP}>
               <div>
                 <label className="block text-sm font-medium text-gray-700 text-center mb-2">Enter 6-digit OTP</label>
                 <div className="mt-1">
+                  {/* Large, centered OTP input for easy entry */}
                   <input 
                     required 
                     maxLength="6"
@@ -167,6 +204,7 @@ const Register = () => {
             </form>
           )}
 
+          {/* Link back to login for users who already have an account */}
           <div className="mt-6 text-center text-sm">
             <Link to="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
               Already have an account? Sign in

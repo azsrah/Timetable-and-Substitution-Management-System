@@ -1,3 +1,12 @@
+// ─────────────────────────────────────────────────────────
+// AdminAttendance.jsx — Teacher Attendance Dashboard
+// Allows the admin to view teacher check-in/check-out records
+// for any specific date.
+// Includes quick stats (Total, Present, Absent) and a searchable,
+// filterable data table. Calculates the exact duration a teacher
+// was present.
+// ─────────────────────────────────────────────────────────
+
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { Card, CardContent, CardHeader } from '../../components/Card';
@@ -5,33 +14,38 @@ import { UserCheck, Search, Calendar, Users, CheckCircle, XCircle } from 'lucide
 import { useNotifications } from '../../contexts/NotificationContext';
 
 const AdminAttendance = () => {
-  const [attendance, setAttendance] = useState([]);
+  const [attendance, setAttendance] = useState([]); // Raw records from the server
   const [loading, setLoading] = useState(true);
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]); // Default: Today
+  const [searchTerm, setSearchTerm] = useState('');     // For searching by name/email
+  const [statusFilter, setStatusFilter] = useState('All'); // 'All', 'Present', or 'Absent'
   const { addNotification } = useNotifications();
 
+  // ── fetchAttendance ─────────────────────────────────────
+  // Fetches records for the currently selected date.
+  // Re-runs automatically whenever 'date' changes.
   useEffect(() => {
+    const fetchAttendance = async () => {
+      setLoading(true);
+      try {
+        const res = await api.get(`/attendance?date=${date}`);
+        setAttendance(res.data);
+      } catch (err) {
+        addNotification({ message: 'Failed to fetch attendance records', type: 'error' });
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchAttendance();
-  }, [date]);
+  }, [date, addNotification]);
 
-  const fetchAttendance = async () => {
-    setLoading(true);
-    try {
-      const res = await api.get(`/attendance?date=${date}`);
-      setAttendance(res.data);
-    } catch (err) {
-      addNotification({ message: 'Failed to fetch attendance records', type: 'error' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // ── Derived State ───────────────────────────────────────
+  // Calculate summary counts from the raw data
   const presentCount = attendance.filter(r => r.status === 'Present').length;
   const absentCount = attendance.filter(r => r.status === 'Absent').length;
   const totalCount = attendance.length;
 
+  // Apply search query and status filter to the raw data before rendering
   const filteredAttendance = attendance.filter(record => {
     const matchesSearch = record.teacher_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          record.teacher_email.toLowerCase().includes(searchTerm.toLowerCase());
@@ -171,11 +185,12 @@ const AdminAttendance = () => {
                   </tr>
                 ) : filteredAttendance.length > 0 ? (
                   filteredAttendance.map((record) => {
+                    // Helper to calculate total hours and minutes a teacher worked
                     const calculateDuration = () => {
                       if (!record.check_in_time || !record.check_out_time) return null;
                       const start = new Date(`1970-01-01T${record.check_in_time}`);
                       const end = new Date(`1970-01-01T${record.check_out_time}`);
-                      const diff = (end - start) / 1000 / 60;
+                      const diff = (end - start) / 1000 / 60; // Diff in minutes
                       const h = Math.floor(diff / 60);
                       const m = Math.floor(diff % 60);
                       return `${h}h ${m}m`;

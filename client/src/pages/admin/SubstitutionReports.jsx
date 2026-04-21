@@ -1,3 +1,10 @@
+// ─────────────────────────────────────────────────────────
+// SubstitutionReports.jsx — Analytics for Substitutions
+// Allows the admin to view a history of all substitutions,
+// apply date and status filters, and generate a branded PDF
+// using 'jspdf' and 'jspdf-autotable'.
+// ─────────────────────────────────────────────────────────
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '../../components/Card';
 import { FileText, Download, Calendar, Filter, CheckCircle, Clock, Search } from 'lucide-react';
@@ -8,15 +15,16 @@ import autoTable from 'jspdf-autotable';
 
 const SubstitutionReports = () => {
   const { addNotification } = useNotifications();
-  const [substitutions, setSubstitutions] = useState([]);
-  const [filteredData, setFilteredData] = useState([]);
+  const [substitutions, setSubstitutions] = useState([]);      // Unfiltered data from API
+  const [filteredData, setFilteredData] = useState([]);        // Data to display/print after filters applied
   const [loading, setLoading] = useState(false);
   
+  // ── Filters state ───────────────────────────────────────
   const [filters, setFilters] = useState({
     startDate: '',
     endDate: '',
-    status: 'All',
-    search: ''
+    status: 'All', // 'Pending', 'Accepted'
+    search: ''     // Name or Subject Search
   });
 
   const fetchSubstitutions = async () => {
@@ -36,10 +44,12 @@ const SubstitutionReports = () => {
     fetchSubstitutions();
   }, []);
 
+  // ── Apply Filters Client-Side ───────────────────────────
+  // Re-runs whenever filters or raw data change
   useEffect(() => {
     let result = [...substitutions];
 
-    // Helper to get local date string YYYY-MM-DD
+    // Helper to extract the local YYYY-MM-DD from an ISO string
     const getLocalDate = (dateObj) => {
       const d = new Date(dateObj);
       return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
@@ -54,6 +64,7 @@ const SubstitutionReports = () => {
     if (filters.status !== 'All') {
       result = result.filter(s => s.status === filters.status);
     }
+    // Deep search across multiple text fields
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
       result = result.filter(s => 
@@ -97,37 +108,38 @@ const SubstitutionReports = () => {
     });
   };
 
+  // ── generatePDF ─────────────────────────────────────────
+  // Creates a styled PDF report using the currently filtered data.
+  // 'outputType' determines if it opens in a new tab ('preview') or downloads directly ('save')
   const generatePDF = (outputType = 'save') => {
     console.log('Generating PDF...', { outputType, records: filteredData.length });
     try {
-      // 1. Initialize jsPDF
+      // 1. Initialize empty jsPDF document
       const doc = new jsPDF();
-      
       console.log('jsPDF initialized');
 
-      // 2. Add Border & Logo
+      // 2. Add Branding & Letterhead
       const pageWidth = doc.internal.pageSize.width;
       const pageHeight = doc.internal.pageSize.height;
       
-      // Page Border
-      doc.setDrawColor(0, 128, 0); // Green
+      // Draw outer border (Green)
+      doc.setDrawColor(0, 128, 0); 
       doc.setLineWidth(1);
       doc.rect(5, 5, pageWidth - 10, pageHeight - 10);
 
-      // Logo Support (Assumes /logo.png exists in public)
       try {
         doc.addImage('/logo.png', 'PNG', 14, 12, 25, 25);
       } catch (e) {
         console.warn('Logo not found at /logo.png, skipping logo addition.');
       }
 
-      // 3. Add Header (Centered)
+      // Title lines
       doc.setFontSize(24);
-      doc.setTextColor(0, 100, 0); // Darker Green
+      doc.setTextColor(0, 100, 0);
       doc.text('KM/KM GOVT. MUSLIM MIXED SCHOOL', pageWidth / 2, 22, { align: 'center' });
       
       doc.setFontSize(14);
-      doc.setTextColor(180, 160, 0); // Gold/Yellow
+      doc.setTextColor(180, 160, 0);
       doc.text('Substitution Management Report', pageWidth / 2, 31, { align: 'center' });
       
       doc.setFontSize(9);
@@ -135,10 +147,9 @@ const SubstitutionReports = () => {
       doc.text(`Generated on: ${new Date().toLocaleString()}`, pageWidth / 2, 38, { align: 'center' });
       doc.text(`Period: ${filters.startDate || 'All Time'} to ${filters.endDate || 'Now'}`, pageWidth / 2, 43, { align: 'center' });
 
-      // Reset for table
-      doc.setTextColor(0, 0, 0);
+      doc.setTextColor(0, 0, 0); // Reset
 
-      // 3. Prepare Data with extreme safety
+      // 3. Prepare Data for AutoTable
       console.log('Mapping table rows...');
       const tableColumn = ["Date", "Absent Teacher", "Substitute", "Class", "Subject", "Period", "Status"];
       const tableRows = filteredData.map(s => {

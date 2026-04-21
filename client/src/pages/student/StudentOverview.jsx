@@ -1,3 +1,10 @@
+// ─────────────────────────────────────────────────────────
+// StudentOverview.jsx — Main Student Dashboard
+// Displays a personalized daily schedule for the student,
+// including any substitutions made on that day, and 
+// recent school-wide or class-specific announcements.
+// ─────────────────────────────────────────────────────────
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card, CardContent, CardHeader } from '../../components/Card';
@@ -8,8 +15,11 @@ import AnnouncementList from '../../components/AnnouncementList';
 
 const StudentOverview = () => {
   const { user } = useAuth();
-  const [todaySchedule, setTodaySchedule] = useState([]);
+  const [todaySchedule, setTodaySchedule] = useState([]); // Student's schedule for today only
 
+  // ── fetchSchedule ─────────────────────────────────────────
+  // Retrieves the schedule for the currently logged-in student.
+  // The API uses the student's `class_id` internally to find the correct data.
   useEffect(() => {
     const fetchSchedule = async () => {
       try {

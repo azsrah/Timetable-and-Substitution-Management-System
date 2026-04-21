@@ -1,3 +1,10 @@
+// ─────────────────────────────────────────────────────────
+// TimetableEditor.jsx — Interactive Timetable Grid editor.
+// Allows admins to assign teachers, subjects, and optional resources
+// to specific periods in a class's weekly schedule.
+// Communicates with backend conflict detection logic.
+// ─────────────────────────────────────────────────────────
+
 import React, { useState, useEffect } from 'react';
 import TimetableGrid from '../../components/TimetableGrid';
 import { Card, CardHeader, CardContent } from '../../components/Card';
@@ -7,28 +14,31 @@ import { useNotifications } from '../../contexts/NotificationContext';
 
 const TimetableEditor = () => {
   const { addNotification } = useNotifications();
+  // ── Data states ──────────────────────────────────────────
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState('');
   
   const [periods, setPeriods] = useState([]);
-  const [timetableData, setTimetableData] = useState([]);
+  const [timetableData, setTimetableData] = useState([]); // Raw schedule array for the selected class
   
   const [subjects, setSubjects] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [resources, setResources] = useState([]);
 
+  // ── Modal states ─────────────────────────────────────────
   const [isModalOpen, setModalOpen] = useState(false);
-  const [slotForm, setSlotForm] = useState(null);
+  const [slotForm, setSlotForm] = useState(null); // Which day/period is being edited right now
 
+  // ── INIT: Fetch dropdown options ─────────────────────────
   useEffect(() => {
     const initFetch = async () => {
       try {
         const [clsRes, perRes, subRes, tRes, resRes] = await Promise.all([
           api.get('/classes'),
-          api.get('/timetable/periods'), // newly added endpoint
+          api.get('/timetable/periods'),
           api.get('/subjects'),
           api.get('/users'),
-          api.get('/resources')
+          api.get('/resources') // Required so admins can assign Labs/Auditoriums
         ]);
         setClasses(clsRes.data);
         setPeriods(perRes.data);
@@ -61,8 +71,12 @@ const TimetableEditor = () => {
     }
   };
 
+  // ── handleSlotClick ─────────────────────────────────────
+  // Triggered when an admin clicks an empty (or filled) cell in the timetable grid
   const handleSlotClick = (day, period, existingSlot) => {
-    if (period.is_break) return;
+    if (period.is_break) return; // Cannot edit recess/lunch intervals
+    
+    // Pre-fill modal with existing data if we are overriding a slot
     setSlotForm({
       class_id: selectedClass,
       day_of_week: day,
@@ -74,13 +88,16 @@ const TimetableEditor = () => {
     setModalOpen(true);
   };
 
+  // ── handeSaveSlot ───────────────────────────────────────
+  // Submits the slot assignment back to the server.
+  // The server controller block will verify NO overlaps (Teacher/Class/Venue).
   const handeSaveSlot = async (e) => {
     e.preventDefault();
     try {
       await api.post('/timetable', slotForm);
       setModalOpen(false);
       addNotification({ message: 'Slot saved successfully!', type: 'success' });
-      loadTimetable(selectedClass); // Reload grid
+      loadTimetable(selectedClass); // Reload grid so the new entry reflects
     } catch (err) {
       // Show conflict errors clearly!
       addNotification({ 

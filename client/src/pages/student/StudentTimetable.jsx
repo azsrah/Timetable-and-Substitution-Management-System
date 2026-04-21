@@ -1,3 +1,9 @@
+// ─────────────────────────────────────────────────────────
+// StudentTimetable.jsx — Weekly Timetable View
+// Renders the global TimetableGrid component, limiting the
+// data directly to the logged-in student's `class_id`.
+// ─────────────────────────────────────────────────────────
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import TimetableGrid from '../../components/TimetableGrid';
@@ -5,10 +11,12 @@ import api from '../../services/api';
 
 const StudentTimetable = () => {
   const { user } = useAuth();
-  const [periods, setPeriods] = useState([]);
-  const [timetableData, setTimetableData] = useState([]);
+  const [periods, setPeriods] = useState([]);          // Time boundaries (e.g. Period 1, Break, etc.)
+  const [timetableData, setTimetableData] = useState([]); // Raw schedule array
   const [loading, setLoading] = useState(true);
 
+  // ── fetchBaseData ────────────────────────────────────────
+  // Only needs to run once when the component mounts to get the base periods array
   useEffect(() => {
     const fetchBaseData = async () => {
       try {
@@ -21,6 +29,9 @@ const StudentTimetable = () => {
     fetchBaseData();
   }, []);
 
+  // ── fetchTimetable ───────────────────────────────────────
+  // Depends on `user.class_id` being available from AuthContext.
+  // Fetches schedule specific to this student's class.
   useEffect(() => {
     if (!user?.class_id) return;
     const fetchTimetable = async () => {

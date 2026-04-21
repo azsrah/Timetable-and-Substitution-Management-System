@@ -1,3 +1,10 @@
+// ─────────────────────────────────────────────────────────
+// UserManagement.jsx — Manage Teachers and Students
+// Admins can view two tabs: Teachers and Students.
+// From here, they can Add new teachers, Edit existing ones,
+// Delete users, and Approve pending student registrations.
+// ─────────────────────────────────────────────────────────
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '../../components/Card';
 import Modal from '../../components/Modal';
@@ -7,13 +14,13 @@ import { Eye, EyeOff } from 'lucide-react';
 
 const UserManagement = () => {
   const { addNotification } = useNotifications();
-  const [users, setUsers] = useState([]);
-  const [activeTab, setActiveTab] = useState('Teachers'); // 'Teachers' or 'Students'
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [editingUserId, setEditingUserId] = useState(null);
+  const [users, setUsers] = useState([]);                      // Master user list
+  const [activeTab, setActiveTab] = useState('Teachers');      // 'Teachers' or 'Students' view toggle
+  const [isModalOpen, setIsModalOpen] = useState(false);       // Create/Edit modal state
+  const [showPassword, setShowPassword] = useState(false);     // Password toggle
+  const [editingUserId, setEditingUserId] = useState(null);    // If not null, modal is in Edit mode
   const [formData, setFormData] = useState({ name: '', email: '', password: '', is_temporary_teacher: false, subject_ids: [] });
-  const [subjects, setSubjects] = useState([]);
+  const [subjects, setSubjects] = useState([]);                // Available subjects to assign to teachers
 
   const fetchUsers = async () => {
     try {
@@ -38,12 +45,14 @@ const UserManagement = () => {
     fetchSubjects();
   }, []);
 
+  // ── handleSaveTeacher ───────────────────────────────────
+  // Creates a new teacher or updates an existing one based on editingUserId.
   const handleSaveTeacher = async (e) => {
     e.preventDefault();
     try {
       if (editingUserId) {
         const payload = { ...formData };
-        if (!payload.password) delete payload.password;
+        if (!payload.password) delete payload.password; // Don't overwrite password if untouched
         await api.put(`/users/teacher/${editingUserId}`, payload);
         addNotification({ message: 'Teacher updated successfully', type: 'success' });
       } else {
@@ -51,7 +60,7 @@ const UserManagement = () => {
         addNotification({ message: 'Teacher created successfully', type: 'success' });
       }
       setIsModalOpen(false);
-      setEditingUserId(null);
+      setEditingUserId(null); // Reset mode back to Create
       setFormData({ name: '', email: '', password: '', is_temporary_teacher: false, subject_ids: [] });
       fetchUsers();
     } catch (err) {
@@ -59,7 +68,10 @@ const UserManagement = () => {
     }
   };
 
+  // ── handleEditClick ─────────────────────────────────────
+  // Populates the modal with the chosen teacher's details.
   const handleEditClick = (u) => {
+    // Parse the subject IDs string back into an array to check the right boxes
     const subject_ids = u.subject_ids_string ? u.subject_ids_string.split(',').map(Number) : [];
     setFormData({
       name: u.name,
@@ -68,10 +80,12 @@ const UserManagement = () => {
       is_temporary_teacher: Boolean(u.is_temporary_teacher),
       subject_ids: subject_ids
     });
-    setEditingUserId(u.id);
+    setEditingUserId(u.id); // Switch modal to Edit Mode
     setIsModalOpen(true);
   };
 
+  // ── handleStatusChange ──────────────────────────────────
+  // Used to quickly Approve 'Inactive' students after they register.
   const handleStatusChange = async (id, status) => {
     try {
       await api.put(`/users/${id}/status`, { status });
@@ -81,8 +95,9 @@ const UserManagement = () => {
     }
   };
 
+  // ── handleDelete ────────────────────────────────────────
   const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this user?')) return;
+    if (!window.confirm('Are you sure you want to delete this user?')) return;
     try {
       await api.delete(`/users/${id}`);
       fetchUsers();
