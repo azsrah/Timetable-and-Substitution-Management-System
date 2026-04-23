@@ -10,27 +10,51 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Card, CardContent, CardHeader } from '../../components/Card';
 import { BookOpen } from 'lucide-react';
 import api from '../../services/api';
+import { useNotifications } from '../../contexts/NotificationContext';
 
 import AnnouncementList from '../../components/AnnouncementList';
 
 const StudentOverview = () => {
   const { user } = useAuth();
+  const { socket } = useNotifications();
   const [todaySchedule, setTodaySchedule] = useState([]); // Student's schedule for today only
 
   // ── fetchSchedule ─────────────────────────────────────────
-  // Retrieves the schedule for the currently logged-in student.
-  // The API uses the student's `class_id` internally to find the correct data.
+  const fetchSchedule = async () => {
+    if (!user?.id) return;
+    try {
+      const { data } = await api.get(`/timetable/today/Student/${user.id}`);
+      setTodaySchedule(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
-    const fetchSchedule = async () => {
-      try {
-        const { data } = await api.get(`/timetable/today/Student/${user.id}`);
-        setTodaySchedule(data);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    if (user) fetchSchedule();
+    fetchSchedule();
   }, [user?.id]);
+
+  // ── Real-time Updates ─────────────────────────────────────
+  // Listen for socket events that should trigger a schedule refresh
+  useEffect(() => {
+    if (!socket || !user) return;
+
+    // Refresh when a substitution for this specific class is accepted
+    const classChannel = `notification_class_${user.class_id}`;
+    socket.on(classChannel, fetchSchedule);
+
+    // Refresh when the admin updates any timetable slot for this class
+    socket.on('timetable_updated', (data) => {
+      if (parseInt(data.class_id) === parseInt(user.class_id)) {
+        fetchSchedule();
+      }
+    });
+
+    return () => {
+      socket.off(classChannel, fetchSchedule);
+      socket.off('timetable_updated');
+    };
+  }, [socket, user?.class_id]);
 
   return (
     <div className="space-y-6">
@@ -56,7 +80,13 @@ const StudentOverview = () => {
                       <div className="flex items-center justify-between">
                         <div className="font-semibold text-gray-900">{slot.subject_name}</div>
                         {slot.is_substituted && (
-                          <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-bold uppercase tracking-wider">Substituted</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider ${
+                            slot.substitution_status === 'Accepted' 
+                              ? 'bg-emerald-100 text-emerald-700' 
+                              : 'bg-amber-100 text-amber-700'
+                          }`}>
+                            {slot.substitution_status === 'Accepted' ? 'Substituted' : 'Substitution Pending'}
+                          </span>
                         )}
                       </div>
                       <div className="text-sm text-gray-500">Teacher: {slot.teacher_name}</div>
