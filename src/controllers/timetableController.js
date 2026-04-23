@@ -51,12 +51,12 @@ exports.getClassTimetable = async (req, res) => {
     sunday.setDate(monday.getDate() + 6);
     sunday.setHours(23,59,59,999);
 
-    // Step 3: Fetch accepted substitutions for this class during the current week
+    // Step 3: Fetch substitutions (Accepted or Pending) for this class during the current week
     const [subRows] = await pool.query(`
       SELECT s.timetable_id, s.date, u.name as substitute_teacher_name, s.status
       FROM substitutions s
       JOIN users u ON s.substitute_teacher_id = u.id
-      WHERE s.date BETWEEN ? AND ? AND s.status = 'Accepted'
+      WHERE s.date BETWEEN ? AND ? AND s.status IN ('Accepted', 'Pending')
       AND s.timetable_id IN (SELECT id FROM timetables WHERE class_id = ?)
     `, [monday, sunday, classId]);
 
@@ -69,12 +69,13 @@ exports.getClassTimetable = async (req, res) => {
         return subDayName.toLowerCase() === row.day_of_week.toLowerCase() && s.timetable_id === row.id;
       });
 
-      // If a substitution exists, add the substitute's name to the row
+      // If a substitution exists, add the substitute's name and status to the row
       if (daySubs.length > 0) {
         return { 
           ...row, 
           substitute_teacher: daySubs[0].substitute_teacher_name,
-          substitution_date: daySubs[0].date
+          substitution_date: daySubs[0].date,
+          substitution_status: daySubs[0].status
         };
       }
       return row; // No substitution — return the original slot
@@ -251,12 +252,12 @@ exports.getTodaySchedule = async (req, res) => {
       `;
       params = [id, dayName];
 
-      // Also fetch any accepted substitutions for today to overlay on the schedule
+      // Also fetch any accepted or pending substitutions for today to overlay on the schedule
       substitutesQuery = `
-        SELECT s.timetable_id, u.name as substitute_teacher_name
+        SELECT s.timetable_id, u.name as substitute_teacher_name, s.status
         FROM substitutions s
         JOIN users u ON s.substitute_teacher_id = u.id
-        WHERE s.date = ? AND s.status = 'Accepted'
+        WHERE s.date = ? AND s.status IN ('Accepted', 'Pending')
       `;
     } else if (role === 'Teacher') {
       // Fetch the teacher's regular classes for today
@@ -292,13 +293,20 @@ exports.getTodaySchedule = async (req, res) => {
        const [subRows] = await pool.query(substitutesQuery, [today]);
        const merged = baseRows.map(row => {
          const sub = subRows.find(s => s.timetable_id === row.timetable_id);
-         if (sub) return { ...row, teacher_name: sub.substitute_teacher_name, is_substituted: true };
+         if (sub) {
+           return { 
+             ...row, 
+             teacher_name: sub.substitute_teacher_name, 
+             is_substituted: true,
+             substitution_status: sub.status 
+           };
+         }
          return row;
        });
        return res.json(merged);
     } else {
        // For teachers: remove periods where they're marked absent, then add their substitution duties
-       const [removals] = await pool.query('SELECT timetable_id FROM substitutions WHERE absent_teacher_id = ? AND date = ? AND status = "Accepted"', [id, today]);
+       const [removals] = await pool.query('SELECT timetable_id FROM substitutions WHERE absent_teacher_id = ? AND date = ? AND status IN ("Accepted", "Pending")', [id, today]);
        const removalIds = removals.map(r => r.timetable_id);
        const [subAssignments] = await pool.query(substitutesQuery, [id, today]);
        const filteredBase = baseRows.filter(row => !removalIds.includes(row.timetable_id)); // Remove absent periods
