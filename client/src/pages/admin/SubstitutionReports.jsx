@@ -21,11 +21,37 @@ const SubstitutionReports = () => {
   
   // ── Filters state ───────────────────────────────────────
   const [filters, setFilters] = useState({
-    startDate: '',
-    endDate: '',
+    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0], // Default to start of month
+    endDate: new Date().toISOString().split('T')[0], // Default to today
     status: 'All', // 'Pending', 'Accepted'
     search: ''     // Name or Subject Search
   });
+
+  const [errors, setErrors] = useState({
+    startDate: '',
+    endDate: ''
+  });
+
+  // ── validateDates ───────────────────────────────────────
+  const validateDates = (start, end) => {
+    const newErrors = { startDate: '', endDate: '' };
+    const today = new Date().toISOString().split('T')[0];
+
+    if (!start || !end) {
+      if (!start) newErrors.startDate = 'Please select a start date.';
+      if (!end) newErrors.endDate = 'Please select an end date.';
+    } else {
+      if (start > today) {
+        newErrors.startDate = 'Start date cannot be in the future.';
+      }
+      if (end < start) {
+        newErrors.endDate = 'End date cannot be before start date.';
+      }
+    }
+
+    setErrors(newErrors);
+    return !newErrors.startDate && !newErrors.endDate;
+  };
 
   const fetchSubstitutions = async () => {
     setLoading(true);
@@ -54,6 +80,11 @@ const SubstitutionReports = () => {
       const d = new Date(dateObj);
       return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
     };
+
+    if (!validateDates(filters.startDate, filters.endDate)) {
+      setFilteredData([]);
+      return;
+    }
 
     if (filters.startDate) {
       result = result.filter(s => getLocalDate(s.date) >= filters.startDate);
@@ -235,7 +266,7 @@ const SubstitutionReports = () => {
         <div className="flex w-full md:w-auto gap-3">
           <button 
             onClick={() => generatePDF('preview')}
-            disabled={filteredData.length === 0}
+            disabled={filteredData.length === 0 || errors.startDate || errors.endDate}
             title={filteredData.length === 0 ? "Adjust filters to show data before previewing" : "View report in new tab"}
             className="flex-1 md:flex-none bg-slate-100 text-slate-700 px-6 py-4 rounded-2xl border border-slate-200 hover:bg-slate-200 transition-all font-bold flex items-center justify-center gap-2 disabled:opacity-50"
           >
@@ -244,7 +275,7 @@ const SubstitutionReports = () => {
           </button>
           <button 
             onClick={() => generatePDF('save')}
-            disabled={filteredData.length === 0}
+            disabled={filteredData.length === 0 || errors.startDate || errors.endDate}
             title={filteredData.length === 0 ? "Adjust filters to show data before downloading" : "Download PDF report"}
             className="flex-1 md:flex-none bg-emerald-600 text-white px-8 py-4 rounded-2xl shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all transform hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-3 font-black disabled:opacity-50 disabled:transform-none"
           >
@@ -263,10 +294,15 @@ const SubstitutionReports = () => {
               </label>
               <input 
                 type="date" 
-                className="w-full border-slate-200 bg-white rounded-2xl p-4 focus:ring-4 focus:ring-indigo-500/10 outline-none transition font-bold text-slate-700 shadow-sm border" 
+                className={`w-full bg-white rounded-2xl p-4 focus:ring-4 outline-none transition font-bold text-slate-700 shadow-sm border ${
+                  errors.startDate 
+                    ? 'border-rose-500 focus:ring-rose-500/10' 
+                    : 'border-slate-200 focus:ring-indigo-500/10'
+                }`}
                 value={filters.startDate}
                 onChange={e => setFilters({...filters, startDate: e.target.value})}
               />
+              {errors.startDate && <p className="text-rose-500 text-[10px] font-black uppercase tracking-tight ml-1 mt-1">{errors.startDate}</p>}
             </div>
             <div className="space-y-2">
               <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
@@ -274,10 +310,15 @@ const SubstitutionReports = () => {
               </label>
               <input 
                 type="date" 
-                className="w-full border-slate-200 bg-white rounded-2xl p-4 focus:ring-4 focus:ring-indigo-500/10 outline-none transition font-bold text-slate-700 shadow-sm border" 
+                className={`w-full bg-white rounded-2xl p-4 focus:ring-4 outline-none transition font-bold text-slate-700 shadow-sm border ${
+                  errors.endDate 
+                    ? 'border-rose-500 focus:ring-rose-500/10' 
+                    : 'border-slate-200 focus:ring-indigo-500/10'
+                }`}
                 value={filters.endDate}
                 onChange={e => setFilters({...filters, endDate: e.target.value})}
               />
+              {errors.endDate && <p className="text-rose-500 text-[10px] font-black uppercase tracking-tight ml-1 mt-1">{errors.endDate}</p>}
             </div>
             <div className="space-y-2">
               <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
@@ -314,7 +355,7 @@ const SubstitutionReports = () => {
             <button onClick={() => setQuickFilter('today')} className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-xs font-black uppercase hover:bg-slate-200 transition">Today</button>
             <button onClick={() => setQuickFilter('week')} className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-xs font-black uppercase hover:bg-slate-200 transition">This Week</button>
             <button onClick={() => setQuickFilter('month')} className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-xs font-black uppercase hover:bg-slate-200 transition">This Month</button>
-            <button onClick={() => { setFilters({startDate: '', endDate: '', status: 'All', search: ''}); }} className="px-4 py-2 rounded-xl bg-rose-50 text-rose-600 text-xs font-black uppercase hover:bg-rose-100 transition ml-auto">Reset Filters</button>
+            <button onClick={() => { setFilters({startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0], endDate: new Date().toISOString().split('T')[0], status: 'All', search: ''}); }} className="px-4 py-2 rounded-xl bg-rose-50 text-rose-600 text-xs font-black uppercase hover:bg-rose-100 transition ml-auto">Reset Filters</button>
           </div>
         </CardContent>
       </Card>

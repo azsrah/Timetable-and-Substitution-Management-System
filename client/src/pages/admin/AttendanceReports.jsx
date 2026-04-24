@@ -25,6 +25,32 @@ const AttendanceReports = () => {
     search: ''
   });
 
+  const [errors, setErrors] = useState({
+    startDate: '',
+    endDate: ''
+  });
+
+  // ── validateDates ───────────────────────────────────────
+  const validateDates = (start, end) => {
+    const newErrors = { startDate: '', endDate: '' };
+    const today = new Date().toISOString().split('T')[0];
+
+    if (!start || !end) {
+      if (!start) newErrors.startDate = 'Please select a start date.';
+      if (!end) newErrors.endDate = 'Please select an end date.';
+    } else {
+      if (start > today) {
+        newErrors.startDate = 'Start date cannot be in the future.';
+      }
+      if (end < start) {
+        newErrors.endDate = 'End date cannot be before start date.';
+      }
+    }
+
+    setErrors(newErrors);
+    return !newErrors.startDate && !newErrors.endDate;
+  };
+
   // ── fetchAttendance ─────────────────────────────────────
   // Unlike Substitutions, Attendance loads specifically for the requested date range
   // from the server instead of all time, to save bandwidth.
@@ -42,7 +68,12 @@ const AttendanceReports = () => {
   };
 
   useEffect(() => {
-    fetchAttendance();
+    if (validateDates(filters.startDate, filters.endDate)) {
+      fetchAttendance();
+    } else {
+      setAttendance([]);
+      setFilteredData([]);
+    }
   }, [filters.startDate, filters.endDate]);
 
   // ── Apply Search Filter Client-side ─────────────────────
@@ -166,7 +197,7 @@ const AttendanceReports = () => {
         <div className="flex w-full md:w-auto gap-3">
           <button 
             onClick={() => generatePDF('preview')}
-            disabled={filteredData.length === 0}
+            disabled={filteredData.length === 0 || errors.startDate || errors.endDate}
             className="flex-1 md:flex-none bg-slate-100 text-slate-700 px-6 py-4 rounded-2xl border border-slate-200 hover:bg-slate-200 transition-all font-bold flex items-center justify-center gap-2 disabled:opacity-50"
           >
             <Search size={18} />
@@ -174,7 +205,7 @@ const AttendanceReports = () => {
           </button>
           <button 
             onClick={() => generatePDF('save')}
-            disabled={filteredData.length === 0}
+            disabled={filteredData.length === 0 || errors.startDate || errors.endDate}
             className="flex-1 md:flex-none bg-emerald-600 text-white px-8 py-4 rounded-2xl shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all flex items-center justify-center gap-3 font-black disabled:opacity-50"
           >
             <Download size={20} />
@@ -192,10 +223,15 @@ const AttendanceReports = () => {
               </label>
               <input 
                 type="date" 
-                className="w-full border-slate-200 bg-white rounded-2xl p-4 focus:ring-4 focus:ring-indigo-500/10 outline-none transition font-bold text-slate-700 shadow-sm border" 
+                className={`w-full bg-white rounded-2xl p-4 focus:ring-4 outline-none transition font-bold text-slate-700 shadow-sm border ${
+                  errors.startDate 
+                    ? 'border-rose-500 focus:ring-rose-500/10' 
+                    : 'border-slate-200 focus:ring-indigo-500/10'
+                }`}
                 value={filters.startDate}
                 onChange={e => setFilters({...filters, startDate: e.target.value})}
               />
+              {errors.startDate && <p className="text-rose-500 text-[10px] font-black uppercase tracking-tight ml-1 mt-1">{errors.startDate}</p>}
             </div>
             <div className="space-y-2">
               <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
@@ -203,10 +239,15 @@ const AttendanceReports = () => {
               </label>
               <input 
                 type="date" 
-                className="w-full border-slate-200 bg-white rounded-2xl p-4 focus:ring-4 focus:ring-indigo-500/10 outline-none transition font-bold text-slate-700 shadow-sm border" 
+                className={`w-full bg-white rounded-2xl p-4 focus:ring-4 outline-none transition font-bold text-slate-700 shadow-sm border ${
+                  errors.endDate 
+                    ? 'border-rose-500 focus:ring-rose-500/10' 
+                    : 'border-slate-200 focus:ring-indigo-500/10'
+                }`}
                 value={filters.endDate}
                 onChange={e => setFilters({...filters, endDate: e.target.value})}
               />
+              {errors.endDate && <p className="text-rose-500 text-[10px] font-black uppercase tracking-tight ml-1 mt-1">{errors.endDate}</p>}
             </div>
             <div className="space-y-2">
               <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
