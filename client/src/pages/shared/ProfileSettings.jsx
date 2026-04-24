@@ -26,6 +26,15 @@ const ProfileSettings = () => {
     contact_info: user?.contact_info || '',
   });
   
+  useEffect(() => {
+    if (user) {
+      setProfileData(prev => ({
+        ...prev,
+        contact_info: user.contact_info || '',
+      }));
+    }
+  }, [user]);
+  
   const [loading, setLoading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
 
